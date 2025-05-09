@@ -20,4 +20,7 @@ target_link_libraries(cprimim
     cprimim-lib
     m
 )
-
+set_target_properties(cprimim PROPERTIES
+  COMPILE_FLAGS "${CMAKE_C_FLAGS_PROFILE}"
+  LINK_FLAGS    "-pg"
+)

@@ -9,9 +9,9 @@ int cprimim_dot(cprimim_Point2i p1, cprimim_Point2i p2) {
 }
 void cprimim_mutate_point(cprimim_Point2i *p, int columns, int rows) {
     int sign = -1 + cprimim_uniform_distribution(0, 2) * 2;
-    int offset = cprimim_uniform_distribution(0, 5);
+    int offset = cprimim_uniform_distribution(0, 15);
     p->x = cprimim_clamp(sign * offset + p->x, 0, columns - 1);
     sign = -1 + cprimim_uniform_distribution(0, 2) * 2;
-    offset = cprimim_uniform_distribution(0, 5);
+    offset = cprimim_uniform_distribution(0, 15);
     p->y = cprimim_clamp(sign * offset + p->y, 0, rows - 1);
 }

@@ -10,11 +10,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
 
-set(CMAKE_C_FLAGS_RELEASE   "-O3 -ffunction-sections -fdata-sections")
+set(CMAKE_C_FLAGS_RELEASE   "-march=native -O3 ")
 
-set(CMAKE_EXE_LINKER_FLAGS  "-Wl,--gc-sections -s")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO  "-march=native -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS_PROFILE "-O2 -g -pg")
+find_package(OpenMP REQUIRED)
 
 # Put ALL executables into <project_root>/bin
 
