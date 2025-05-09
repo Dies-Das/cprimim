@@ -76,9 +76,9 @@ void cprimim_draw_pixel_callback(cprimim_Image *image, int x, int y,
     cprimim_Color *color = data;
 
     size_t index = y * image->columns * CHANNELS + x * CHANNELS;
-    image->data[index] = color->r;
-    image->data[index + 1] = color->g;
-    image->data[index + 2] = color->b;
+    image->data[index] = ((int)color->r + (int)image->data[index]) / 2;
+    image->data[index + 1] = ((int)color->g + (int)image->data[index + 1]) / 2;
+    image->data[index + 2] = ((int)color->b + (int)image->data[index + 2]) / 2;
 }
 void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
                                     void *data) {
@@ -108,5 +108,5 @@ void cprimim_compare_pixel_callback(cprimim_Image *image, int x, int y,
     new_mse += diff * diff;
     diff = (int)image->data[index + 2] - (int)comparator->color->b;
     new_mse += diff * diff;
-    comparator->improvement = old_mse - new_mse;
+    comparator->improvement = (old_mse - new_mse);
 }

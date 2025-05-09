@@ -1,6 +1,7 @@
 add_executable(cprimim
     cli.c
 
+    flag_impl.c
     stb_impl.c
 )
 
