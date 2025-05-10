@@ -21,9 +21,26 @@ void mutate_bezier(cprimim_Bezier *input, int columns, int rows) {
 }
 
 void random_bezier(cprimim_Bezier *input, int columns, int rows) {
-    for (uint64_t k = 0; k < 3; k++) {
-        cprimim_randomize_point(&input->points[k], columns, rows);
-    }
+    cprimim_randomize_point(&input->points[0], columns, rows);
+    input->points[1] = input->points[0];
+    cprimim_mutate_point(&input->points[1], columns, rows, MUTATION_DISTANCE);
+    input->points[2] = input->points[1];
+    cprimim_mutate_point(&input->points[2], columns, rows, MUTATION_DISTANCE);
+}
+
+bool not_valid_initial(cprimim_Bezier *input) {
+    bool valid = 0;
+    int dx01 = abs(input->points[0].x - input->points[1].x);
+    int dx02 = abs(input->points[0].x - input->points[2].x);
+    int dx12 = abs(input->points[1].x - input->points[2].x);
+    int dy01 = abs(input->points[0].y - input->points[1].y);
+    int dy02 = abs(input->points[0].y - input->points[2].y);
+    int dy12 = abs(input->points[1].y - input->points[2].y);
+    int d01 = dx01 * dx01 + dy01 * dy01;
+    int d02 = dx02 * dx02 + dy02 * dy02;
+    int d12 = dx12 * dx12 + dy12 * dy12;
+    valid = (d02 <= d12 || d02 <= d01);
+    return valid;
 }
 bool not_valid_bezier(cprimim_Bezier *input) {
     bool valid = 0;
@@ -219,6 +236,9 @@ void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
     int columns = input->columns;
     int rows = input->rows;
     random_bezier(&bezier, columns, rows);
+    while (not_valid_bezier(&bezier)) {
+        random_bezier(&bezier, columns, rows);
+    }
     cprimim_Bezier old_bezier = {0};
     cprimim_Image output_buffer = {0};
     cprimim_Color avg = cprimim_avg_color(input);
@@ -246,6 +266,9 @@ void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
         int number_of_tries = 0;
 
         random_bezier(&bezier, input->columns, input->rows);
+        while (not_valid_initial(&bezier)) {
+            random_bezier(&bezier, columns, rows);
+        }
         old_bezier = bezier;
         while (number_of_tries < max_number_of_tries) {
 
@@ -253,7 +276,7 @@ void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
 
             // cprimim_set_image(output, output_buffer_pointer);
             mutate_bezier(&bezier, input->columns, input->rows);
-            if (not_valid_bezier(&bezier)) {
+            if (not_valid_initial(&bezier)) {
 
                 bezier = old_bezier;
                 continue;

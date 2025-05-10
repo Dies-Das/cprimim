@@ -2,7 +2,7 @@
 #define UTILS_H
 
 #include <stdint.h>
-#define MUTATION_DISTANCE 15
+#define MUTATION_DISTANCE 45
 extern uint32_t rng_state;
 void utils_srand(uint64_t seed);
 static inline int cprimim_sign(int x) {
