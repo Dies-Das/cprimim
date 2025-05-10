@@ -78,10 +78,10 @@ int main(int argc, char *argv[]) {
     printf("starting approximation..\n");
     double elapsed = 0;
     double time = clock();
-    cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes,
-                        *nr_of_tries, *thickness);
-    // cprimim_bezier_approx(&resized_input, &small_output, *nr_of_shapes,
-    //                       *nr_of_tries);
+    // cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes,
+    //                     *nr_of_tries, *thickness);
+    cprimim_bezier_approx(&resized_input, &small_output, *nr_of_shapes,
+                          *nr_of_tries);
     elapsed = (double)clock() - time;
     printf("We have %f fps!\n", CLOCKS_PER_SEC / elapsed);
     cprimim_Image full_output = {0};
