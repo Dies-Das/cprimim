@@ -3,3 +3,4 @@ build/
 bin/
 examples
 compile_commands.json
+.vscode
