@@ -27,6 +27,10 @@ int main(int argc, char *argv[]) {
     uint64_t *nr_of_shapes = flag_uint64(
         "n", 300,
         "Number of shapes to draw. For lines, a good number is around 2000.");
+    uint64_t *nr_of_tries =
+        flag_uint64("tries", 5,
+                    "Will stop hill climbing if there was no improvement after "
+                    "trying -tries times");
     char **input_path = flag_str("input", "in.png", "Image file to load");
     if (!flag_parse(argc, argv)) {
         usage(stderr);
@@ -53,7 +57,6 @@ int main(int argc, char *argv[]) {
     int x = 0;
     int y = 0;
     int n = 0;
-    srand(0);
     char *result = argv[1];
     cprimim_Image input;
     input.data = stbi_load(*input_path, &input.columns, &input.rows, &n, 3);
@@ -73,9 +76,14 @@ int main(int argc, char *argv[]) {
     cprimim_Image small_output = {0};
     small_output = cprimim_copy_image(&resized_input);
     printf("starting approximation..\n");
-    cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes, 15,
-                        *thickness);
-    printf("done!\n");
+    double elapsed = 0;
+    double time = clock();
+    // cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes,
+    //                     *nr_of_tries, *thickness);
+    cprimim_bezier_approx(&resized_input, &small_output, *nr_of_shapes,
+                          *nr_of_tries);
+    elapsed = (double)clock() - time;
+    printf("We have %f fps!\n", CLOCKS_PER_SEC / elapsed);
     cprimim_Image full_output = {0};
     full_output.data = stbir_resize_uint8_srgb(
         small_output.data, small_output.columns, small_output.rows,
@@ -89,6 +97,7 @@ int main(int argc, char *argv[]) {
     stbi_image_free(input.data);
     stbi_image_free(resized_input.data);
     stbi_image_free(small_output.data);
+    // stbi_image_free(full_output.data);
     // stbi_image_free(output.data);
     return EXIT_SUCCESS;
 }

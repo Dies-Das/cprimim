@@ -1,6 +1,6 @@
 add_library(cprimim-lib
     image.c
-
+    bezier.c
     processing.c
     line.c
 
