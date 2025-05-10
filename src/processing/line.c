@@ -21,60 +21,52 @@ cprimim_AvgColor fill_line_buffer(cprimim_Image *image, cprimim_Line line,
     cprimim_AvgColor result = {0};
     int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
     int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    int err = dx - dy, e2, x2, y2; /* error value e_xy */
+    int err = dx - dy, e2, x2, y2;
     int ed = dx + dy == 0 ? 1 : (dx * dx + dy * dy);
-    size_t index = 0;
     buffer->count = 0;
-    for (thickness = (thickness + 1) / 2;;) { /* pixel loop */
-        if (x0 >= 0 && y0 >= 0 && x0 < image->columns && y0 < image->rows) {
-            assert(x0 >= 0 && y0 >= 0 && x0 < image->columns &&
-                   y0 < image->rows);
-            index = CHANNELS * (image->columns * y0 + x0);
-            buffer->indices[buffer->count] = index;
-            buffer->count++;
-            cprimim_average_color_callback(image, x0, y0, &result);
-        }
-        e2 = err;
-        x2 = x0;
-        if (2 * e2 >= -dx) { /* x step */
-            for (e2 += dy, y2 = y0;
-                 e2 * e2 < ed * thickness * thickness && (y1 != y2 || dx > dy);
-                 e2 += dx) {
-                y2 += sy;
-                if (x0 >= 0 && y2 >= 0 && x0 < image->columns &&
-                    y2 < image->rows) {
-                    assert(x0 >= 0 && y2 >= 0 && x0 < image->columns &&
-                           y2 < image->rows);
-                    index = CHANNELS * (image->columns * y2 + x0);
-                    buffer->indices[buffer->count] = index;
-                    buffer->count++;
-                    cprimim_average_color_callback(image, x0, y2, &result);
+    size_t idx;
+
+    int half = (thickness + 1) / 2;
+
+    bool steep = (dy > dx);
+
+    while (true) {
+        if (steep) {
+            for (int off = -half; off <= half; off++) {
+                int xx = x0 + off;
+                int yy = y0;
+                if (xx >= 0 && yy >= 0 && xx < image->columns &&
+                    yy < image->rows) {
+                    idx = (size_t)CHANNELS * ((size_t)yy * image->columns + xx);
+                    buffer->indices[buffer->count++] = idx;
+                    cprimim_average_color_callback(image, xx, yy, &result);
                 }
             }
-            e2 = err;
+        } else {
+            for (int off = -half; off <= half; off++) {
+                int xx = x0;
+                int yy = y0 + off;
+                if (xx >= 0 && yy >= 0 && xx < image->columns &&
+                    yy < image->rows) {
+                    idx = (size_t)CHANNELS * ((size_t)yy * image->columns + xx);
+                    buffer->indices[buffer->count++] = idx;
+                    cprimim_average_color_callback(image, xx, yy, &result);
+                }
+            }
+        }
+
+        if (x0 == x1 && y0 == y1)
+            break;
+
+        int e2 = err * 2;
+        if (e2 > -dy) {
             err -= dy;
             x0 += sx;
         }
-        if (2 * e2 <= dy) { /* y step */
-            for (e2 = dx - e2;
-                 e2 * e2 < ed * thickness * thickness && (x1 != x2 || dx < dy);
-                 e2 += dy) {
-                x2 += sx;
-                if (x2 >= 0 && y0 >= 0 && x2 < image->columns &&
-                    y0 < image->rows) {
-                    assert(x2 >= 0 && y0 >= 0 && x2 < image->columns &&
-                           y0 < image->rows);
-                    index = CHANNELS * (image->columns * y0 + x2);
-                    buffer->indices[buffer->count] = index;
-                    buffer->count++;
-                    cprimim_average_color_callback(image, x2, y0, &result);
-                }
-            }
+        if (e2 < dx) {
             err += dx;
             y0 += sy;
         }
-        if (x0 == x1)
-            break;
     }
     return result;
 }
@@ -180,7 +172,8 @@ void cprimim_line_approx(cprimim_Image *input, cprimim_Image *output,
             color = cprimim_average_color_and_buffer_line(input, &buffer, line,
                                                           thickness);
 
-            // cprimim_draw_line(output_buffer_pointer, line, color, thickness);
+            // cprimim_draw_line(output_buffer_pointer, line, color,
+            // thickness);
             new_improvement = cprimim_line_improvement(input, output, &buffer,
                                                        line, color, thickness);
 
