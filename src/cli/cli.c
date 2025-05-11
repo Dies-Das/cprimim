@@ -32,6 +32,10 @@ int main(int argc, char *argv[]) {
                     "Will stop hill climbing if there was no improvement after "
                     "trying -tries times");
     char **input_path = flag_str("input", "in.png", "Image file to load");
+    uint64_t *method = flag_uint64(
+        "method", 0,
+        "Method to use. line (0) and bezier(1) are implemented so far.");
+
     if (!flag_parse(argc, argv)) {
         usage(stderr);
         flag_print_error(stderr);
@@ -78,10 +82,15 @@ int main(int argc, char *argv[]) {
     printf("starting approximation..\n");
     double elapsed = 0;
     double time = clock();
-    // cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes,
-    //                     *nr_of_tries, *thickness);
-    cprimim_bezier_approx(&resized_input, &small_output, *nr_of_shapes,
-                          *nr_of_tries);
+    switch (*method) {
+    case 0:
+        cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes,
+                            *nr_of_tries, *thickness);
+        break;
+    case 1:
+        cprimim_bezier_approx(&resized_input, &small_output, *nr_of_shapes,
+                              *nr_of_tries);
+    }
     elapsed = (double)clock() - time;
     printf("We have %f fps!\n", CLOCKS_PER_SEC / elapsed);
     cprimim_Image full_output = {0};

@@ -300,7 +300,6 @@ void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
             }
         }
         global_tries += total_tries;
-
         cprimim_draw_bezier(output, &best_buffer, best_color);
         // cprimim_set_image(output_buffer_pointer, output);
     }
