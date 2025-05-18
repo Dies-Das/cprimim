@@ -4,6 +4,10 @@
 #define CHANNELS 3
 #include "color.h"
 typedef struct {
+        size_t *indices;
+        uint32_t count;
+} cprimim_IndexBuffer;
+typedef struct {
         unsigned char *data;
         int columns;
         int rows;

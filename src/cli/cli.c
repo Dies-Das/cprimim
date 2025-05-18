@@ -4,6 +4,7 @@
 #include "stb_image_resize2.h"
 #include "stb_image_write.h"
 #include <flag.h>
+#include <omp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +28,8 @@ int main(int argc, char *argv[]) {
     uint64_t *nr_of_shapes = flag_uint64(
         "n", 300,
         "Number of shapes to draw. For lines, a good number is around 2000.");
+    uint64_t *nr_of_candidates =
+        flag_uint64("c", 3, "Number of candidate shapes to consider.");
     uint64_t *nr_of_tries =
         flag_uint64("tries", 5,
                     "Will stop hill climbing if there was no improvement after "
@@ -35,6 +38,7 @@ int main(int argc, char *argv[]) {
     uint64_t *method = flag_uint64(
         "method", 0,
         "Method to use. line (0) and bezier(1) are implemented so far.");
+    uint64_t *threads = flag_uint64("threads", 1, "Number of threads to use.");
 
     if (!flag_parse(argc, argv)) {
         usage(stderr);
@@ -79,18 +83,14 @@ int main(int argc, char *argv[]) {
         processing_columns, processing_rows, processing_columns * 3, STBIR_RGB);
     cprimim_Image small_output = {0};
     small_output = cprimim_copy_image(&resized_input);
+    cprimim_Context context = cprimim_create_context(
+        *method, *nr_of_shapes, *nr_of_candidates, *threads, *nr_of_tries,
+        processing_columns, processing_rows);
+    cprimim_set_input(&context, resized_input.data);
     printf("starting approximation..\n");
     double elapsed = 0;
     double time = clock();
-    switch (*method) {
-    case 0:
-        cprimim_line_approx(&resized_input, &small_output, *nr_of_shapes,
-                            *nr_of_tries, *thickness);
-        break;
-    case 1:
-        cprimim_bezier_approx(&resized_input, &small_output, *nr_of_shapes,
-                              *nr_of_tries);
-    }
+    small_output = *cprimim_approximate(&context);
     elapsed = (double)clock() - time;
     printf("We have %f fps!\n", CLOCKS_PER_SEC / elapsed);
     cprimim_Image full_output = {0};
@@ -105,7 +105,8 @@ int main(int argc, char *argv[]) {
     printf("columns: %d\n", input.columns);
     stbi_image_free(input.data);
     stbi_image_free(resized_input.data);
-    stbi_image_free(small_output.data);
+    // stbi_image_free(small_output.data);
+    cprimim_destroy_context(&context);
     // stbi_image_free(full_output.data);
     // stbi_image_free(output.data);
     return EXIT_SUCCESS;
