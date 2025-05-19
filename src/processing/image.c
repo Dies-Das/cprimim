@@ -108,10 +108,10 @@ void cprimim_compare_pixel_callback(cprimim_Image *image, cprimim_Image *output,
            ((int)comparator->color->r + (int)output->data[index]) / 2;
     new_mse += diff * diff;
     diff = (int)image->data[index + 1] -
-           ((int)comparator->color->g + (int)output->data[index] + 1) / 2;
+           ((int)comparator->color->g + (int)output->data[index + 1]) / 2;
     new_mse += diff * diff;
     diff = (int)image->data[index + 2] -
-           ((int)comparator->color->b + (int)output->data[index] + 2) / 2;
+           ((int)comparator->color->b + (int)output->data[index + 2]) / 2;
     new_mse += diff * diff;
     comparator->improvement = (old_mse - new_mse);
 }

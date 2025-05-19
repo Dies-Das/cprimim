@@ -316,7 +316,8 @@ void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
 void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_Image *input = &context->input;
     cprimim_Image *output = &context->output;
-    cprimim_Bezier *candidates = context->candidate_shapes;
+    cprimim_IndexBuffer *buffer = &context->working_buffer;
+    cprimim_IndexBuffer *best_buffer = &context->result_buffer;
     size_t number_of_lines = context->nr_shapes;
     size_t max_number_of_tries = context->attempts;
     int columns = input->columns;
@@ -326,63 +327,80 @@ void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_set_background(output, &avg);
     int global_tries = 0;
     printf("starting iteration!\n");
-#pragma omp parallel
+    // #pragma omp parallel
     {
         for (int k = 0; k < number_of_lines; k++) {
-#pragma omp for schedule(static)
+            // #pragma omp for schedule(static)
+            cprimim_Bezier old_candidate_shape = {0};
+            cprimim_Bezier candidate_shape = {0};
+            cprimim_Color color = {0};
+            cprimim_Color best_color = {0};
+
+            int current_improvement = INT_MAX;
+            int new_improvement = 0;
             for (int candidate = 0; candidate < context->candidates;
                  candidate++) {
-                cprimim_IndexBuffer *buffer =
-                    &context->working_buffer[candidate];
-                cprimim_IndexBuffer *best_buffer =
-                    &context->result_buffer[candidate];
-                cprimim_Color color = {0};
-                cprimim_Color best_color = {0};
-
-                size_t number_of_tries = 0;
-                int current_improvement = INT_MAX;
-                int new_improvement = 0;
-                cprimim_Bezier *candidate_shape = &candidates[candidate];
                 do {
-                    random_bezier(candidate_shape, columns, rows);
-                } while (not_valid_initial(candidate_shape));
-                cprimim_Bezier old_candidate_shape = *candidate_shape;
-                while (number_of_tries < max_number_of_tries) {
+                    random_bezier(&candidate_shape, columns, rows);
+                } while (not_valid_initial(&candidate_shape));
+                color = cprimim_average_color_and_buffer_bezier(
+                    input, buffer, candidate_shape);
+                // cprimim_draw_bezier(output_buffer_pointer, bezier, color,
+                // );
+                new_improvement = cprimim_bezier_improvement(
+                    input, output, buffer, candidate_shape, color);
+                candidate_shape.improvement = new_improvement;
+                if (new_improvement >= current_improvement) {
+                    candidate_shape = old_candidate_shape;
 
-                    // cprimim_set_image(output, output_buffer_pointer);
-                    mutate_bezier(candidate_shape, input->columns, input->rows);
-                    if (not_valid_initial(candidate_shape)) {
-
-                        *candidate_shape = old_candidate_shape;
-                        continue;
-                    }
-                    color = cprimim_average_color_and_buffer_bezier(
-                        input, buffer, *candidate_shape);
-                    // cprimim_draw_bezier(output_buffer_pointer, bezier, color,
-                    // );
-                    new_improvement = cprimim_bezier_improvement(
-                        input, output, buffer, *candidate_shape, color);
-                    candidate_shape->improvement = new_improvement;
-                    if (new_improvement >= current_improvement) {
-                        *candidate_shape = old_candidate_shape;
-                        number_of_tries++;
-
-                    } else {
-                        current_improvement = new_improvement;
-                        number_of_tries = 0;
-                        memcpy(best_buffer->indices, buffer->indices,
-                               sizeof(uint64_t) * buffer->count);
-                        best_buffer->count = buffer->count;
-                        best_color = color;
-                    }
+                } else {
+                    current_improvement = new_improvement;
+                    memcpy(best_buffer->indices, buffer->indices,
+                           sizeof(uint64_t) * buffer->count);
+                    best_buffer->count = buffer->count;
+                    best_color = color;
+                    old_candidate_shape = candidate_shape;
                 }
-                candidate_shape->color = best_color;
-                candidate_shape->improvement = current_improvement;
             }
-#pragma omp single
+            for (size_t number_of_tries = 0;
+                 number_of_tries < max_number_of_tries; number_of_tries++) {
+
+                // cprimim_set_image(output, output_buffer_pointer);
+                mutate_bezier(&candidate_shape, input->columns, input->rows);
+                if (not_valid_bezier(&candidate_shape)) {
+
+                    candidate_shape = old_candidate_shape;
+                    continue;
+                }
+                color = cprimim_average_color_and_buffer_bezier(
+                    input, buffer, candidate_shape);
+                // cprimim_draw_bezier(output_buffer_pointer, bezier, color,
+                // );
+                new_improvement = cprimim_bezier_improvement(
+                    input, output, buffer, candidate_shape, color);
+                candidate_shape.improvement = new_improvement;
+                if (new_improvement >= current_improvement) {
+                    candidate_shape = old_candidate_shape;
+
+                } else {
+                    current_improvement = new_improvement;
+                    memcpy(best_buffer->indices, buffer->indices,
+                           sizeof(uint64_t) * buffer->count);
+                    best_buffer->count = buffer->count;
+                    best_color = color;
+                }
+            }
+            candidate_shape.color = best_color;
+            candidate_shape.improvement = current_improvement;
+            if (current_improvement >= 0) {
+                printf("got worse!\n");
+                // k--;
+                // continue;
+            }
+            // #pragma omp single
             {
-                cprimim_draw_bezier(output, &context->result_buffer[0],
-                                    candidates[0].color);
+                cprimim_draw_bezier(output, &context->result_buffer,
+                                    candidate_shape.color);
                 // cprimim_set_image(output_buffer_pointer, output);
             }
         }

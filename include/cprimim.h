@@ -6,10 +6,9 @@
 enum cprimim_shape { LINE, BEZIER, TRIANGLE, RECTANGLE, ELLIPSE };
 typedef struct {
         enum cprimim_shape s;
-        cprimim_IndexBuffer *result_buffer;
-        cprimim_IndexBuffer *working_buffer;
+        cprimim_IndexBuffer result_buffer;
+        cprimim_IndexBuffer working_buffer;
         void *shapes;
-        void *candidate_shapes;
         cprimim_Image input;
         cprimim_Image output;
         int rows;
