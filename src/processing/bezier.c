@@ -18,7 +18,7 @@
 
 void mutate_bezier(cprimim_Bezier *input, int columns, int rows) {
     uint64_t random_value = fast_rand();
-    uint64_t index = random_value & 1 + random_value & 2;
+    uint64_t index = (random_value & 1) + ((random_value & 2) >> 1);
     cprimim_mutate_point(&input->points[index], columns, rows,
                          MUTATION_DISTANCE);
 }
@@ -87,7 +87,7 @@ bool not_valid_bezier(cprimim_Bezier *input) {
         int x2, int y2) { /* plot a limited quadratic Bezier segment */        \
         int sx = x2 - x1, sy = y2 - y1;                                        \
         long xx = x0 - x1, yy = y0 - y1, xy; /* relative values for checks */  \
-        double dx, dy, err, cur = xx * sy - yy * sx; /* curvature */           \
+        int dx, dy, err, cur = xx * sy - yy * sx; /* curvature */              \
         uint64_t index = 0;                                                    \
         assert(xx *sx <= 0 &&                                                  \
                yy * sy <= 0); /* sign of gradient must not change */           \
@@ -113,9 +113,9 @@ bool not_valid_bezier(cprimim_Bezier *input) {
                 xy = -xy;                                                      \
                 cur = -cur;                                                    \
             }                                                                  \
-            dx = 4.0 * sy * cur * (x1 - x0) + xx -                             \
+            dx = 4 * sy * cur * (x1 - x0) + xx -                               \
                  xy; /* differences 1st degree */                              \
-            dy = 4.0 * sx * cur * (y0 - y1) + yy - xy;                         \
+            dy = 4 * sx * cur * (y0 - y1) + yy - xy;                           \
             xx += xx;                                                          \
             yy += yy;                                                          \
             err = dx + dy + xy; /* error 1st step */                           \
@@ -153,7 +153,7 @@ bool not_valid_bezier(cprimim_Bezier *input) {
         int y1 = bezier->points[1].y;                                          \
         int y2 = bezier->points[2].y;                                          \
         int x = x0 - x1, y = y0 - y1;                                          \
-        double t = x0 - 2 * x1 + x2, r;                                        \
+        float t = x0 - 2 * x1 + x2, r;                                         \
         if ((long)x * (x2 - x1) > 0) {   /* horizontal cut at P4? */           \
             if ((long)y * (y2 - y1) > 0) /* vertical cut at P6 too? */         \
                 if (fabs((y0 - 2 * y1 + y2) / t * x) >                         \
