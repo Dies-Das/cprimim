@@ -71,14 +71,17 @@ void cprimim_set_image(const cprimim_Image *input, cprimim_Image *output) {
     assert(input->columns == output->columns && input->rows == output->rows);
     memcpy(output->data, input->data, input->rows * input->columns * 3);
 }
-void cprimim_draw_pixel_callback(cprimim_Image *image, uint64_t index,
+void cprimim_draw_pixel_callback(cprimim_Image *image, int x, int y,
                                  void *data) {
-    assert(index >= 0 && index + 2 < image->rows * image->columns * 3);
-    cprimim_Color *color = data;
-
-    image->data[index] = ((int)color->r + (int)image->data[index]) / 2;
-    image->data[index + 1] = ((int)color->g + (int)image->data[index + 1]) / 2;
-    image->data[index + 2] = ((int)color->b + (int)image->data[index + 2]) / 2;
+    cprimim_DrawData *drawdata = data;
+    cprimim_Color *color = drawdata->color;
+    size_t index = CHANNELS * (y * image->columns + x);
+    drawdata->output->data[index] =
+        ((int)color->r + (int)drawdata->output->data[index]) / 2;
+    drawdata->output->data[index + 1] =
+        ((int)color->g + (int)drawdata->output->data[index + 1]) / 2;
+    drawdata->output->data[index + 2] =
+        ((int)color->b + (int)drawdata->output->data[index + 2]) / 2;
 }
 void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
                                     void *data) {
@@ -91,10 +94,11 @@ void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
     final_color->b += image->data[index + 2];
     final_color->count++;
 }
-void cprimim_compare_pixel_callback(cprimim_Image *image, cprimim_Image *output,
-                                    uint64_t index, void *data) {
-    assert(index >= 0 && index + 2 < image->rows * image->columns * 3);
+void cprimim_compare_pixel_callback(cprimim_Image *image, int x, int y,
+                                    void *data) {
     cprimim_Comparator *comparator = data;
+    cprimim_Image *output = comparator->other;
+    size_t index = CHANNELS * (y * output->columns + x);
     int old_mse = 0;
     int new_mse = 0;
     int diff = 0;

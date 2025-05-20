@@ -2,7 +2,7 @@ add_library(cprimim-lib
     image.c
     bezier.c
     processing.c
-    line.c
+    # line.c
 
     utils.c
     point.c

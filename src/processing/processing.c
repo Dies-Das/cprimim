@@ -1,7 +1,7 @@
 #include "bezier.h"
 #include "cprimim.h"
 #include "image.h"
-#include "line.h"
+// #include "line.h"
 #include "utils.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -16,7 +16,7 @@ cprimim_Context cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
     size_t shape_size = 0;
     switch (s) {
     case LINE:
-        shape_size = sizeof(cprimim_Line);
+        // shape_size = sizeof(cprimim_Line);
         break;
     case BEZIER:
         shape_size = sizeof(cprimim_Bezier);
@@ -64,8 +64,8 @@ void cprimim_set_input(cprimim_Context *context, uint8_t *buffer) {
 cprimim_Image *cprimim_approximate(cprimim_Context *context) {
     switch (context->s) {
     case LINE:
-        cprimim_line_approx(&context->input, &context->output,
-                            context->nr_shapes, context->candidates, 4);
+        // cprimim_line_approx(&context->input, &context->output,
+        //                     context->nr_shapes, context->candidates, 4);
         break;
     case BEZIER:
         cprimim_bezier_approx(context);

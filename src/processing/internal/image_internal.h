@@ -6,5 +6,8 @@ typedef struct {
         cprimim_Image *other;
         cprimim_Color *color;
 } cprimim_Comparator;
-
+typedef struct {
+        cprimim_Image *output;
+        cprimim_Color *color;
+} cprimim_DrawData;
 #endif // !IMAGE_INTERNAL_H
