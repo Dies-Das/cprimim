@@ -290,7 +290,7 @@ void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
             new_improvement = cprimim_bezier_improvement(input, output, &buffer,
                                                          bezier, color);
             bezier.improvement = new_improvement;
-            if (new_improvement >= current_improvement) {
+            if (new_improvement <= current_improvement) {
                 bezier = old_bezier;
                 number_of_tries++;
 
@@ -336,7 +336,7 @@ void cprimim_bezier_approx(cprimim_Context *context) {
             cprimim_Color color = {0};
             cprimim_Color best_color = {0};
 
-            int current_improvement = INT_MAX;
+            int current_improvement = INT_MIN;
             int new_improvement = 0;
             for (int candidate = 0; candidate < context->candidates;
                  candidate++) {
@@ -350,24 +350,25 @@ void cprimim_bezier_approx(cprimim_Context *context) {
                 new_improvement = cprimim_bezier_improvement(
                     input, output, buffer, candidate_shape, color);
                 candidate_shape.improvement = new_improvement;
-                if (new_improvement >= current_improvement) {
+                if (new_improvement <= current_improvement) {
                     candidate_shape = old_candidate_shape;
 
                 } else {
                     current_improvement = new_improvement;
-                    memcpy(best_buffer->indices, buffer->indices,
-                           sizeof(uint64_t) * buffer->count);
+                    // memcpy(best_buffer->indices, buffer->indices,
+                    //        sizeof(uint64_t) * buffer->count);
                     best_buffer->count = buffer->count;
                     best_color = color;
                     old_candidate_shape = candidate_shape;
                 }
             }
-            for (size_t number_of_tries = 0;
-                 number_of_tries < max_number_of_tries; number_of_tries++) {
+            size_t number_of_tries = 0;
+            current_improvement = INT_MIN;
+            while (number_of_tries < max_number_of_tries) {
 
                 // cprimim_set_image(output, output_buffer_pointer);
                 mutate_bezier(&candidate_shape, input->columns, input->rows);
-                if (not_valid_bezier(&candidate_shape)) {
+                if (not_valid_initial(&candidate_shape)) {
 
                     candidate_shape = old_candidate_shape;
                     continue;
@@ -379,8 +380,9 @@ void cprimim_bezier_approx(cprimim_Context *context) {
                 new_improvement = cprimim_bezier_improvement(
                     input, output, buffer, candidate_shape, color);
                 candidate_shape.improvement = new_improvement;
-                if (new_improvement >= current_improvement) {
+                if (new_improvement <= current_improvement) {
                     candidate_shape = old_candidate_shape;
+                    number_of_tries++;
 
                 } else {
                     current_improvement = new_improvement;
@@ -388,11 +390,12 @@ void cprimim_bezier_approx(cprimim_Context *context) {
                            sizeof(uint64_t) * buffer->count);
                     best_buffer->count = buffer->count;
                     best_color = color;
+                    number_of_tries = 0;
                 }
             }
             candidate_shape.color = best_color;
             candidate_shape.improvement = current_improvement;
-            if (current_improvement >= 0) {
+            if (current_improvement <= 0) {
                 printf("got worse!\n");
                 // k--;
                 // continue;
