@@ -16,9 +16,17 @@
 #include <string.h>
 #include <time.h>
 
+int compar(const void *a, const void *b) {
+    const cprimim_Bezier *left = a;
+    const cprimim_Bezier *right = b;
+    if (left->improvement < right->improvement) {
+        return -1;
+    }
+    return 1;
+}
 void mutate_bezier(cprimim_Bezier *input, int columns, int rows) {
     uint64_t random_value = fast_rand();
-    uint64_t index = (random_value & 1) + ((random_value & 2) >> 1);
+    uint64_t index = random_value % 3;
     cprimim_mutate_point(&input->points[index], columns, rows,
                          MUTATION_DISTANCE);
 }
@@ -236,10 +244,11 @@ int cprimim_bezier_improvement(cprimim_Image *image, cprimim_Image *output,
 void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_Image *input = &context->input;
     cprimim_Image *output = &context->output;
-    cprimim_IndexBuffer *buffer = &context->working_buffer;
-    cprimim_IndexBuffer *best_buffer = &context->result_buffer;
     size_t number_of_lines = context->nr_shapes;
     size_t max_number_of_tries = context->attempts;
+    size_t initial_shapes = context->initial_shapes;
+    cprimim_Bezier *shapes = context->shapes;
+    cprimim_Bezier *candidate_shapes = context->candidate_shapes;
     int columns = input->columns;
 
     int rows = input->rows;
@@ -247,84 +256,60 @@ void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_set_background(output, &avg);
     int global_tries = 0;
     printf("starting iteration!\n");
-    // #pragma omp parallel
-    {
-        for (int k = 0; k < number_of_lines; k++) {
-            // #pragma omp for schedule(static)
+    for (int k = 0; k < number_of_lines; k++) {
+        for (int candidate = 0; candidate < context->candidates; candidate++) {
             cprimim_Bezier old_candidate_shape = {0};
             cprimim_Bezier candidate_shape = {0};
-            cprimim_Color color = {0};
-            cprimim_Color best_color = {0};
 
-            int current_improvement = INT_MIN;
-            int new_improvement = 0;
-            for (int candidate = 0; candidate < context->candidates;
-                 candidate++) {
+            candidate_shape.improvement = INT_MIN;
+            old_candidate_shape.improvement = INT_MIN;
+            for (int initial_shape = 0; initial_shape < initial_shapes;
+                 initial_shape++) {
                 do {
                     random_bezier(&candidate_shape, columns, rows);
                 } while (not_valid_initial(&candidate_shape));
-                color = cprimim_average_color_bezier(input, candidate_shape);
-                // cprimim_draw_bezier(output_buffer_pointer, bezier, color,
-                // );
-                new_improvement = cprimim_bezier_improvement(
-                    input, output, candidate_shape, color);
-                candidate_shape.improvement = new_improvement;
-                if (new_improvement <= current_improvement) {
+                candidate_shape.color =
+                    cprimim_average_color_bezier(input, candidate_shape);
+                candidate_shape.improvement = cprimim_bezier_improvement(
+                    input, output, candidate_shape, candidate_shape.color);
+                if (candidate_shape.improvement <=
+                    old_candidate_shape.improvement) {
                     candidate_shape = old_candidate_shape;
 
                 } else {
-                    current_improvement = new_improvement;
-                    // memcpy(best_buffer->indices, buffer->indices,
-                    //        sizeof(uint64_t) * buffer->count);
-                    // best_buffer->count = buffer->count;
-                    best_color = color;
                     old_candidate_shape = candidate_shape;
                 }
             }
             size_t number_of_tries = 0;
-            current_improvement = INT_MIN;
             while (number_of_tries < max_number_of_tries) {
-
-                // cprimim_set_image(output, output_buffer_pointer);
                 mutate_bezier(&candidate_shape, input->columns, input->rows);
                 if (not_valid_initial(&candidate_shape)) {
 
                     candidate_shape = old_candidate_shape;
                     continue;
                 }
-                color = cprimim_average_color_bezier(input, candidate_shape);
-                // cprimim_draw_bezier(output_buffer_pointer, bezier, color,
-                // );
-                new_improvement = cprimim_bezier_improvement(
-                    input, output, candidate_shape, color);
-                candidate_shape.improvement = new_improvement;
-                if (new_improvement <= current_improvement) {
+                candidate_shape.color =
+                    cprimim_average_color_bezier(input, candidate_shape);
+                candidate_shape.improvement = cprimim_bezier_improvement(
+                    input, output, candidate_shape, candidate_shape.color);
+                candidate_shape.improvement = candidate_shape.improvement;
+                if (candidate_shape.improvement <=
+                    old_candidate_shape.improvement) {
                     candidate_shape = old_candidate_shape;
                     number_of_tries++;
 
                 } else {
-                    current_improvement = new_improvement;
-                    // memcpy(best_buffer->indices, buffer->indices,
-                    //        sizeof(uint64_t) * buffer->count);
-                    // best_buffer->count = buffer->count;
-                    best_color = color;
+                    old_candidate_shape.improvement =
+                        candidate_shape.improvement;
                     number_of_tries = 0;
                 }
             }
-            candidate_shape.color = best_color;
-            candidate_shape.improvement = current_improvement;
-            if (current_improvement <= 0) {
-                printf("got worse!\n");
-                // k--;
-                // continue;
-            }
-            // #pragma omp single
-            {
-                cprimim_draw_bezier(output, &candidate_shape,
-                                    candidate_shape.color);
-                // cprimim_set_image(output_buffer_pointer, output);
-            }
+            candidate_shapes[candidate] = candidate_shape;
         }
+        qsort(candidate_shapes, context->candidates, sizeof(cprimim_Bezier),
+              compar);
+        shapes[k] = candidate_shapes[0];
+        cprimim_draw_bezier(output, &shapes[k], shapes[k].color);
     }
     printf("done!\n");
     return;

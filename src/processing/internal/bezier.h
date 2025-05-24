@@ -8,8 +8,6 @@ typedef struct {
         cprimim_Point2i points[3];
         int improvement;
         cprimim_Color color;
-        // cprimim_IndexBuffer best_buffer;
-        // cprimim_IndexBuffer buffer;
 
 } cprimim_Bezier;
 #if 0

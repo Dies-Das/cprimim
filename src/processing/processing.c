@@ -10,8 +10,9 @@
 #include <time.h>
 
 cprimim_Context cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
-                                       size_t candidates, size_t threads,
-                                       size_t attempts, int columns, int rows) {
+                                       size_t candidates, size_t initial_shapes,
+                                       size_t threads, size_t attempts,
+                                       int columns, int rows) {
     cprimim_Context result = {0};
     size_t shape_size = 0;
     switch (s) {
@@ -36,15 +37,13 @@ cprimim_Context cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
     result.rows = rows;
     result.columns = columns;
     result.candidates = candidates;
+    result.initial_shapes = initial_shapes;
     result.threads = threads;
     result.nr_shapes = nr_shapes;
     result.attempts = attempts;
     result.s = s;
     result.shapes = malloc(shape_size * nr_shapes);
-    result.result_buffer.indices =
-        malloc(sizeof(size_t) * (columns + rows) * candidates);
-    result.working_buffer.indices =
-        malloc(sizeof(size_t) * (columns + rows) * candidates);
+    result.candidate_shapes = malloc(shape_size * candidates);
     result.output.data = malloc(columns * rows * 3);
     result.output.rows = rows;
     result.output.columns = columns;
@@ -53,10 +52,9 @@ cprimim_Context cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
     return result;
 }
 void cprimim_destroy_context(cprimim_Context *context) {
-    free(context->result_buffer.indices);
-    free(context->working_buffer.indices);
     free(context->output.data);
     free(context->shapes);
+    free(context->candidate_shapes);
 }
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer) {
     context->input.data = buffer;

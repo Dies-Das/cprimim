@@ -30,6 +30,9 @@ int main(int argc, char *argv[]) {
         "Number of shapes to draw. For lines, a good number is around 2000.");
     uint64_t *nr_of_candidates =
         flag_uint64("c", 3, "Number of candidate shapes to consider.");
+    uint64_t *nr_of_initial = flag_uint64(
+        "initial", 1000,
+        "Number of starting shapes to consider for an optimization run");
     uint64_t *nr_of_tries =
         flag_uint64("tries", 5,
                     "Will stop hill climbing if there was no improvement after "
@@ -38,7 +41,7 @@ int main(int argc, char *argv[]) {
     uint64_t *method = flag_uint64(
         "method", 0,
         "Method to use. line (0) and bezier(1) are implemented so far.");
-    uint64_t *threads = flag_uint64("threads", 1, "Number of threads to use.");
+    uint64_t *threads = flag_uint64("j", 1, "Number of threads to use.");
 
     if (!flag_parse(argc, argv)) {
         usage(stderr);
@@ -84,8 +87,8 @@ int main(int argc, char *argv[]) {
     cprimim_Image small_output = {0};
     small_output = cprimim_copy_image(&resized_input);
     cprimim_Context context = cprimim_create_context(
-        *method, *nr_of_shapes, *nr_of_candidates, *threads, *nr_of_tries,
-        processing_columns, processing_rows);
+        *method, *nr_of_shapes, *nr_of_candidates, *nr_of_initial, *threads,
+        *nr_of_tries, processing_columns, processing_rows);
     cprimim_set_input(&context, resized_input.data);
     printf("starting approximation..\n");
     double elapsed = 0;
