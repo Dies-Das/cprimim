@@ -1,6 +1,7 @@
 #include "image.h"
 #include "color.h"
 #include "image_internal.h"
+#include "utils.h"
 #include <assert.h>
 #include <math.h>
 #include <omp.h>
@@ -9,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define ALPHA 122
 cprimim_Image cprimim_copy_image(const cprimim_Image *input) {
     cprimim_Image output = {0};
     long size = input->rows * input->columns * 3;
@@ -99,27 +99,24 @@ void cprimim_compare_pixel_callback(cprimim_Image *image, int x, int y,
     cprimim_Comparator *comparator = data;
     cprimim_Image *output = comparator->other;
     size_t index = CHANNELS * (y * output->columns + x);
-    int old_mse = 0;
-    int new_mse = 0;
-    int diff = 0;
+    int old_r = image->data[index];
+    int old_g = image->data[index + 1];
+    int old_b = image->data[index + 2];
+    int new_r = output->data[index];
+    int new_g = output->data[index + 1];
+    int new_b = output->data[index + 2];
+    int64_t diff = -old_r * 255 + (255 - A) * new_r;
+    comparator->sum_diffs[0] += diff;
+    comparator->sum_diffs_squared[0] += diff * diff;
+    diff = -old_g * 255 + (255 - A) * new_g;
+    comparator->sum_diffs[1] += diff;
+    comparator->sum_diffs_squared[1] += diff * diff;
+    diff = -old_b * 255 + (255 - A) * new_b;
+    comparator->sum_diffs[2] += diff;
+    comparator->sum_diffs_squared[2] += diff * diff;
+    comparator->counter++;
     for (int k = 0; k < 3; k++) {
-        diff = (int)image->data[index + k] -
-               (int)comparator->other->data[index + k];
-        old_mse += diff * diff;
-        // old_mse += abs(diff);
+        diff = output->data[index + k] - image->data[index + k];
+        comparator->error_old += diff * diff;
     }
-
-    diff = (int)image->data[index] -
-           ((int)comparator->color->r + (int)output->data[index]) / 2;
-    new_mse += diff * diff;
-    // new_mse += abs(diff);
-    diff = (int)image->data[index + 1] -
-           ((int)comparator->color->g + (int)output->data[index + 1]) / 2;
-    // new_mse += diff * diff;
-    // new_mse += abs(diff);
-    diff = (int)image->data[index + 2] -
-           ((int)comparator->color->b + (int)output->data[index + 2]) / 2;
-    new_mse += diff * diff;
-    // new_mse += abs(diff);
-    comparator->improvement = (old_mse - new_mse);
 }

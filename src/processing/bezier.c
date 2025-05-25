@@ -231,15 +231,25 @@ cprimim_Color cprimim_average_color_bezier(cprimim_Image *image,
     result.b = avg.b / avg.count;
     return result;
 }
-int cprimim_bezier_improvement(cprimim_Image *image, cprimim_Image *output,
-                               cprimim_Bezier bezier, cprimim_Color color) {
-    int result;
+void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
+                      cprimim_Bezier *bezier) {
     cprimim_Comparator comparator = {0};
-    comparator.color = &color;
     comparator.other = output;
-    improvement(image, &bezier, &comparator);
-
-    return comparator.improvement;
+    improvement(image, bezier, &comparator);
+    int64_t denom = A * comparator.counter;
+    bezier->color.r = cprimim_clamp(-comparator.sum_diffs[0] / denom, 0, 255);
+    bezier->color.g = cprimim_clamp(-comparator.sum_diffs[1] / denom, 0, 255);
+    bezier->color.b = cprimim_clamp(-comparator.sum_diffs[2] / denom, 0, 255);
+    uint64_t error_new =
+        comparator.sum_diffs_squared[0] -
+        comparator.sum_diffs[0] * comparator.sum_diffs[0] / comparator.counter;
+    error_new += comparator.sum_diffs_squared[1] - comparator.sum_diffs[1] *
+                                                       comparator.sum_diffs[1] /
+                                                       comparator.counter;
+    error_new += comparator.sum_diffs_squared[2] - comparator.sum_diffs[2] *
+                                                       comparator.sum_diffs[2] /
+                                                       comparator.counter;
+    bezier->improvement = comparator.error_old - error_new / (255 * 255);
 }
 void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_Image *input = &context->input;
@@ -256,7 +266,10 @@ void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_set_background(output, &avg);
     int global_tries = 0;
     printf("starting iteration!\n");
+    // #pragma omp parallel
     for (int k = 0; k < number_of_lines; k++) {
+
+        // #pragma omp for
         for (int candidate = 0; candidate < context->candidates; candidate++) {
             cprimim_Bezier old_candidate_shape = {0};
             cprimim_Bezier candidate_shape = {0};
@@ -268,10 +281,7 @@ void cprimim_bezier_approx(cprimim_Context *context) {
                 do {
                     random_bezier(&candidate_shape, columns, rows);
                 } while (not_valid_initial(&candidate_shape));
-                candidate_shape.color =
-                    cprimim_average_color_bezier(input, candidate_shape);
-                candidate_shape.improvement = cprimim_bezier_improvement(
-                    input, output, candidate_shape, candidate_shape.color);
+                cprimim_best_fit(input, output, &candidate_shape);
                 if (candidate_shape.improvement <=
                     old_candidate_shape.improvement) {
                     candidate_shape = old_candidate_shape;
@@ -288,11 +298,7 @@ void cprimim_bezier_approx(cprimim_Context *context) {
                     candidate_shape = old_candidate_shape;
                     continue;
                 }
-                candidate_shape.color =
-                    cprimim_average_color_bezier(input, candidate_shape);
-                candidate_shape.improvement = cprimim_bezier_improvement(
-                    input, output, candidate_shape, candidate_shape.color);
-                candidate_shape.improvement = candidate_shape.improvement;
+                cprimim_best_fit(input, output, &candidate_shape);
                 if (candidate_shape.improvement <=
                     old_candidate_shape.improvement) {
                     candidate_shape = old_candidate_shape;
