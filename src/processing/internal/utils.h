@@ -5,7 +5,7 @@
 #define MUTATION_DISTANCE 40
 #define ALPHA 128
 #define A 128
-extern uint32_t rng_state;
+extern _Thread_local uint32_t rng_state;
 void utils_srand(uint64_t seed);
 static inline int cprimim_sign(int x) {
     if (x < 0) {

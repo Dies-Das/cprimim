@@ -96,6 +96,10 @@ void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
 }
 void cprimim_compare_pixel_callback(cprimim_Image *image, int x, int y,
                                     void *data) {
+    if (x < 0 || y < 0 || x >= image->columns || y >= image->rows) {
+
+        return;
+    }
     cprimim_Comparator *comparator = data;
     cprimim_Image *output = comparator->other;
     size_t index = CHANNELS * (y * output->columns + x);

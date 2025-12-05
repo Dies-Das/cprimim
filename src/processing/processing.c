@@ -32,7 +32,7 @@ cprimim_Context cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
         fprintf(stderr, "Shape either does not exist or is not implemented.\n");
         return result;
     }
-    utils_srand(time(NULL));
+    // utils_srand(time(NULL));
 
     result.rows = rows;
     result.columns = columns;

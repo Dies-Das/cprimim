@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <omp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -16,29 +17,27 @@
 #include <string.h>
 #include <time.h>
 
+#define SIMPLEX_SIZE 7
+void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
+                      cprimim_Bezier *bezier);
 int compar(const void *a, const void *b) {
     const cprimim_Bezier *left = a;
     const cprimim_Bezier *right = b;
-    if (left->improvement < right->improvement) {
-        return -1;
+    if (left->improvement > right->improvement) {
+        return 1;
     }
-    return 1;
+    return -1;
 }
-void mutate_bezier(cprimim_Bezier *input, int columns, int rows) {
-    uint64_t random_value = fast_rand();
-    uint64_t index = random_value % 3;
-    cprimim_mutate_point(&input->points[index], columns, rows,
-                         MUTATION_DISTANCE);
+bool not_valid_bezier(cprimim_Bezier *input) {
+    bool valid = 0;
+    valid |= (input->points[0].x == input->points[1].x &&
+              input->points[0].y == input->points[1].y);
+    valid |= (input->points[2].x == input->points[1].x &&
+              input->points[2].y == input->points[1].y);
+    valid |= (input->points[0].x == input->points[2].x &&
+              input->points[0].y == input->points[2].y);
+    return valid;
 }
-
-void random_bezier(cprimim_Bezier *input, int columns, int rows) {
-    cprimim_randomize_point(&input->points[0], columns, rows);
-    input->points[1] = input->points[0];
-    cprimim_mutate_point(&input->points[1], columns, rows, MUTATION_DISTANCE);
-    input->points[2] = input->points[1];
-    cprimim_mutate_point(&input->points[2], columns, rows, MUTATION_DISTANCE);
-}
-
 bool not_valid_initial(cprimim_Bezier *input) {
     bool valid = 0;
     int dx01 = abs(input->points[0].x - input->points[1].x);
@@ -53,15 +52,66 @@ bool not_valid_initial(cprimim_Bezier *input) {
     valid = (d02 <= d12 || d02 <= d01);
     return valid;
 }
-bool not_valid_bezier(cprimim_Bezier *input) {
-    bool valid = 0;
-    valid |= (input->points[0].x == input->points[1].x &&
-              input->points[0].y == input->points[1].y);
-    valid |= (input->points[2].x == input->points[1].x &&
-              input->points[2].y == input->points[1].y);
-    valid |= (input->points[0].x == input->points[2].x &&
-              input->points[0].y == input->points[2].y);
-    return valid;
+void mutate_bezier(cprimim_Bezier *input, int columns, int rows) {
+    do {
+
+        uint64_t random_value = fast_rand();
+        uint64_t index = random_value % 3;
+        cprimim_mutate_point(&input->points[index], columns, rows,
+                             MUTATION_DISTANCE);
+    } while (not_valid_initial(input));
+}
+
+void random_bezier(cprimim_Bezier *input, int columns, int rows) {
+    cprimim_randomize_point(&input->points[0], columns, rows);
+    input->points[1] = input->points[0];
+    cprimim_mutate_point_uniform(&input->points[1], columns, rows,
+                                 MUTATION_DISTANCE);
+    input->points[2] = input->points[1];
+    cprimim_mutate_point_uniform(&input->points[2], columns, rows,
+                                 MUTATION_DISTANCE);
+    mutate_bezier(input, columns, rows);
+}
+static cprimim_Bezier stratified_random_bezier(int seed_index, int n_init,
+                                               int columns, int rows) {
+    int G = (int)ceil(sqrt((double)n_init));
+    int cell_x = seed_index % G;
+    int cell_y = seed_index / G;
+    int cell_w = columns / G;
+    int cell_h = rows / G;
+
+    cprimim_Bezier bz = {0};
+
+    do {
+        int x0 = cell_x * cell_w + cprimim_uniform_distribution(0, cell_w);
+        int y0 = cell_y * cell_h + cprimim_uniform_distribution(0, cell_h);
+        bz.points[0].x = x0;
+        bz.points[0].y = y0;
+        bz.points[1] = bz.points[0];
+        cprimim_mutate_point_uniform(&bz.points[1], columns, rows,
+                                     MUTATION_DISTANCE);
+        bz.points[2] = bz.points[1];
+        cprimim_mutate_point_uniform(&bz.points[2], columns, rows,
+                                     MUTATION_DISTANCE);
+    } while (not_valid_initial(&bz));
+    // mutate_bezier(&bz, columns, rows);
+    return bz;
+}
+
+static cprimim_Bezier pick_best_initial_bezier(cprimim_Image *orig,
+                                               cprimim_Image *curr, int columns,
+                                               int rows, int n_init) {
+    cprimim_Bezier best = {.improvement = INT_MAX};
+
+    for (int i = 0; i < n_init; i++) {
+        cprimim_Bezier cand =
+            stratified_random_bezier(i, n_init, columns, rows);
+        cprimim_best_fit(orig, curr, &cand);
+        if (cand.improvement < best.improvement) {
+            best = cand;
+        }
+    }
+    return best;
 }
 // Courtesy to http://members.chello.at/%7Eeasyfilter/Bresenham.pdf
 #define LINE_SEG(FUNC_NAME, CALLBACK)                                          \
@@ -206,7 +256,6 @@ bool not_valid_bezier(cprimim_Bezier *input) {
         FUNC_NAME##_seg(image, payload, x0, y0, x1, y1, x2,                    \
                         y2); /* remaining part */                              \
     }
-BEZIER_PIXEL_ITERATOR(average_color, cprimim_average_color_callback)
 BEZIER_PIXEL_ITERATOR(improvement, cprimim_compare_pixel_callback)
 BEZIER_PIXEL_ITERATOR(draw, cprimim_draw_pixel_callback)
 
@@ -217,20 +266,6 @@ void cprimim_draw_bezier(cprimim_Image *image, cprimim_Bezier *bezier,
     data.output = image;
     draw(image, bezier, &data);
 }
-cprimim_Color cprimim_average_color_bezier(cprimim_Image *image,
-                                           cprimim_Bezier bezier) {
-    cprimim_Color result = {0};
-    cprimim_AvgColor avg = {0};
-    cprimim_AvgColor *data = &avg;
-    assert(bezier.points[0].x != bezier.points[1].x ||
-           bezier.points[0].y != bezier.points[1].y);
-    average_color(image, &bezier, data);
-    assert(avg.count > 0);
-    result.r = avg.r / avg.count;
-    result.g = avg.g / avg.count;
-    result.b = avg.b / avg.count;
-    return result;
-}
 void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
                       cprimim_Bezier *bezier) {
     cprimim_Comparator comparator = {0};
@@ -240,7 +275,7 @@ void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
     bezier->color.r = cprimim_clamp(-comparator.sum_diffs[0] / denom, 0, 255);
     bezier->color.g = cprimim_clamp(-comparator.sum_diffs[1] / denom, 0, 255);
     bezier->color.b = cprimim_clamp(-comparator.sum_diffs[2] / denom, 0, 255);
-    uint64_t error_new =
+    int64_t error_new =
         comparator.sum_diffs_squared[0] -
         comparator.sum_diffs[0] * comparator.sum_diffs[0] / comparator.counter;
     error_new += comparator.sum_diffs_squared[1] - comparator.sum_diffs[1] *
@@ -249,7 +284,49 @@ void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
     error_new += comparator.sum_diffs_squared[2] - comparator.sum_diffs[2] *
                                                        comparator.sum_diffs[2] /
                                                        comparator.counter;
-    bezier->improvement = comparator.error_old - error_new / (255 * 255);
+    bezier->improvement = -(comparator.error_old - error_new / (255 * 255));
+}
+static inline void clamp_bezier(cprimim_Bezier *bz, int columns, int rows) {
+    for (int i = 0; i < 3; i++) {
+        if (bz->points[i].x < 0)
+            bz->points[i].x = 0;
+        else if (bz->points[i].x >= columns)
+            bz->points[i].x = columns - 1;
+        if (bz->points[i].y < 0)
+            bz->points[i].y = 0;
+        else if (bz->points[i].y >= rows)
+            bz->points[i].y = rows - 1;
+    }
+}
+static void reflect_bezier(const cprimim_Bezier *worst, const int *centroid,
+                           int factor, cprimim_Bezier *out) {
+    // copy the structure as a base
+    *out = *worst;
+
+    // extract worst coords and apply reflection in each dimension
+    // dims: 0→p0.x, 1→p0.y, 2→p1.x, 3→p1.y, 4→p2.x, 5→p2.y
+    int worst_coords[6] = {worst->points[0].x, worst->points[0].y,
+                           worst->points[1].x, worst->points[1].y,
+                           worst->points[2].x, worst->points[2].y};
+    int *outs[6] = {&out->points[0].x, &out->points[0].y, &out->points[1].x,
+                    &out->points[1].y, &out->points[2].x, &out->points[2].y};
+
+    // 4) Loop over the 6 dimensions
+    for (int d = 0; d < 6; d++) {
+        int v = centroid[d] + factor * (centroid[d] - worst_coords[d]);
+        *outs[d] = v;
+    }
+}
+static void sort_bezier(cprimim_Bezier *beziers, int n) {
+    for (int i = 1; i < n; i++) {
+        cprimim_Bezier key = beziers[i];
+        int j = i - 1;
+        while (j >= 0 && beziers[j].improvement > key.improvement) {
+            beziers[j + 1] = beziers[j];
+            j--;
+        }
+        beziers[j + 1] = key;
+    }
 }
 void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_Image *input = &context->input;
@@ -266,57 +343,49 @@ void cprimim_bezier_approx(cprimim_Context *context) {
     cprimim_set_background(output, &avg);
     int global_tries = 0;
     printf("starting iteration!\n");
+    uint64_t avg_iterations = 0;
     // #pragma omp parallel
-    for (int k = 0; k < number_of_lines; k++) {
+    {
+        int tid = omp_get_thread_num();
+        utils_srand(time(NULL) ^ (uint64_t)tid * 0x9E3779B97F4A7C15ULL);
+        for (int k = 0; k < number_of_lines; k++) {
+            // #pragma omp for schedule(static)
+            for (int candidate = 0; candidate < context->candidates;
+                 candidate++) {
+                uint64_t current_iterations = 0;
+                cprimim_Bezier old_candidate_shape = {0};
+                cprimim_Bezier candidate_shape = {0};
 
-        // #pragma omp for
-        for (int candidate = 0; candidate < context->candidates; candidate++) {
-            cprimim_Bezier old_candidate_shape = {0};
-            cprimim_Bezier candidate_shape = {0};
+                candidate_shape.improvement = INT_MAX;
+                old_candidate_shape.improvement = INT_MAX;
+                candidate_shape = pick_best_initial_bezier(
+                    input, output, columns, rows, initial_shapes);
+                size_t number_of_tries = 0;
+                while (number_of_tries < max_number_of_tries) {
+                    current_iterations++;
+                    mutate_bezier(&candidate_shape, input->columns,
+                                  input->rows);
+                    cprimim_best_fit(input, output, &candidate_shape);
+                    if (candidate_shape.improvement >=
+                        old_candidate_shape.improvement) {
+                        candidate_shape = old_candidate_shape;
+                        number_of_tries++;
 
-            candidate_shape.improvement = INT_MIN;
-            old_candidate_shape.improvement = INT_MIN;
-            for (int initial_shape = 0; initial_shape < initial_shapes;
-                 initial_shape++) {
-                do {
-                    random_bezier(&candidate_shape, columns, rows);
-                } while (not_valid_initial(&candidate_shape));
-                cprimim_best_fit(input, output, &candidate_shape);
-                if (candidate_shape.improvement <=
-                    old_candidate_shape.improvement) {
-                    candidate_shape = old_candidate_shape;
-
-                } else {
-                    old_candidate_shape = candidate_shape;
+                    } else {
+                        old_candidate_shape = candidate_shape;
+                        number_of_tries = 0;
+                    }
                 }
+
+                candidate_shapes[candidate] = candidate_shape;
             }
-            size_t number_of_tries = 0;
-            while (number_of_tries < max_number_of_tries) {
-                mutate_bezier(&candidate_shape, input->columns, input->rows);
-                if (not_valid_initial(&candidate_shape)) {
-
-                    candidate_shape = old_candidate_shape;
-                    continue;
-                }
-                cprimim_best_fit(input, output, &candidate_shape);
-                if (candidate_shape.improvement <=
-                    old_candidate_shape.improvement) {
-                    candidate_shape = old_candidate_shape;
-                    number_of_tries++;
-
-                } else {
-                    old_candidate_shape.improvement =
-                        candidate_shape.improvement;
-                    number_of_tries = 0;
-                }
+            {
+                sort_bezier(candidate_shapes, context->candidates);
+                shapes[k] = candidate_shapes[0];
+                cprimim_draw_bezier(output, &shapes[k], shapes[k].color);
             }
-            candidate_shapes[candidate] = candidate_shape;
         }
-        qsort(candidate_shapes, context->candidates, sizeof(cprimim_Bezier),
-              compar);
-        shapes[k] = candidate_shapes[0];
-        cprimim_draw_bezier(output, &shapes[k], shapes[k].color);
     }
-    printf("done!\n");
+    printf("done! with average iterations %lu\n", avg_iterations);
     return;
 }
