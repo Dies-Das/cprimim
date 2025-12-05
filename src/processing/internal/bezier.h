@@ -9,7 +9,7 @@ typedef struct {
         int improvement;
         cprimim_Color color;
 
-} cprimim_Bezier;
+} cprimim_bezier;
 #if 0
 void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
                            int number_of_lines, int max_number_of_tries);

@@ -20,7 +20,7 @@ cprimim_Context cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
         // shape_size = sizeof(cprimim_Line);
         break;
     case BEZIER:
-        shape_size = sizeof(cprimim_Bezier);
+        shape_size = sizeof(cprimim_bezier);
         break;
     case TRIANGLE:
         break;
