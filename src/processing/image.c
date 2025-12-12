@@ -1,6 +1,5 @@
-#include "image.h"
-#include "color.h"
 #include "image_internal.h"
+#include "color.h"
 #include "utils.h"
 #include <assert.h>
 #include <math.h>
@@ -71,20 +70,8 @@ void cprimim_set_image(const cprimim_Image *input, cprimim_Image *output) {
     assert(input->columns == output->columns && input->rows == output->rows);
     memcpy(output->data, input->data, input->rows * input->columns * 3);
 }
-void cprimim_draw_pixel_callback(cprimim_Image *image, int x, int y,
-                                 void *data) {
-    cprimim_DrawData *drawdata = data;
-    cprimim_Color *color = drawdata->color;
-    size_t index = CHANNELS * (y * image->columns + x);
-    drawdata->output->data[index] =
-        ((int)color->r + (int)drawdata->output->data[index]) / 2;
-    drawdata->output->data[index + 1] =
-        ((int)color->g + (int)drawdata->output->data[index + 1]) / 2;
-    drawdata->output->data[index + 2] =
-        ((int)color->b + (int)drawdata->output->data[index + 2]) / 2;
-}
-void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
-                                    void *data) {
+void cprimim_average_color_callback(cprimim_Image *restrict image, int x, int y,
+                                    void *restrict data) {
 
     assert(x >= 0 && y >= 0 && x < image->columns && y < image->rows);
     cprimim_AvgColor *final_color = data;
@@ -93,34 +80,4 @@ void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
     final_color->g += image->data[index + 1];
     final_color->b += image->data[index + 2];
     final_color->count++;
-}
-void cprimim_compare_pixel_callback(cprimim_Image *image, int x, int y,
-                                    void *data) {
-    if (x < 0 || y < 0 || x >= image->columns || y >= image->rows) {
-
-        return;
-    }
-    cprimim_Comparator *comparator = data;
-    cprimim_Image *output = comparator->other;
-    size_t index = CHANNELS * (y * output->columns + x);
-    int old_r = image->data[index];
-    int old_g = image->data[index + 1];
-    int old_b = image->data[index + 2];
-    int new_r = output->data[index];
-    int new_g = output->data[index + 1];
-    int new_b = output->data[index + 2];
-    int64_t diff = -old_r * 255 + (255 - A) * new_r;
-    comparator->sum_diffs[0] += diff;
-    comparator->sum_diffs_squared[0] += diff * diff;
-    diff = -old_g * 255 + (255 - A) * new_g;
-    comparator->sum_diffs[1] += diff;
-    comparator->sum_diffs_squared[1] += diff * diff;
-    diff = -old_b * 255 + (255 - A) * new_b;
-    comparator->sum_diffs[2] += diff;
-    comparator->sum_diffs_squared[2] += diff * diff;
-    comparator->counter++;
-    for (int k = 0; k < 3; k++) {
-        diff = output->data[index + k] - image->data[index + k];
-        comparator->error_old += diff * diff;
-    }
 }

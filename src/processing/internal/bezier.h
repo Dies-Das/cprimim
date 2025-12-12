@@ -1,7 +1,6 @@
 #ifndef BEZIER_H
 #define BEZIER_H
-#include "cprimim.h"
-#include "image.h"
+#include "cprimim_internal.h"
 #include "point.h"
 #include "utils.h"
 typedef struct {
@@ -10,10 +9,5 @@ typedef struct {
         cprimim_Color color;
 
 } cprimim_bezier;
-#if 0
-void cprimim_bezier_approx(cprimim_Image *input, cprimim_Image *output,
-                           int number_of_lines, int max_number_of_tries);
-#else
 void cprimim_bezier_approx(cprimim_Context *context);
-#endif
 #endif // !BEZIER_H

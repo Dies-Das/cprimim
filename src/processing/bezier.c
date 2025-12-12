@@ -1,8 +1,6 @@
 #include "bezier.h"
 #include "optimize.h"
 #include "color.h"
-#include "image.h"
-#include "image_internal.h"
 #include "point.h"
 #include "utils.h"
 #include <assert.h>
@@ -16,19 +14,19 @@
 #include <stdlib.h>
 #include <time.h>
 
-void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
+static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
                       cprimim_bezier *bezier);
+// bool not_valid_bezier(cprimim_bezier *input) {
+//     bool valid = 0;
+//     valid |= (input->points[0].x == input->points[1].x &&
+//               input->points[0].y == input->points[1].y);
+//     valid |= (input->points[2].x == input->points[1].x &&
+//               input->points[2].y == input->points[1].y);
+//     valid |= (input->points[0].x == input->points[2].x &&
+//               input->points[0].y == input->points[2].y);
+//     return valid;
+// }
 bool not_valid_bezier(cprimim_bezier *input) {
-    bool valid = 0;
-    valid |= (input->points[0].x == input->points[1].x &&
-              input->points[0].y == input->points[1].y);
-    valid |= (input->points[2].x == input->points[1].x &&
-              input->points[2].y == input->points[1].y);
-    valid |= (input->points[0].x == input->points[2].x &&
-              input->points[0].y == input->points[2].y);
-    return valid;
-}
-bool not_valid_initial(cprimim_bezier *input) {
     bool valid = 0;
     int dx01 = abs(input->points[0].x - input->points[1].x);
     int dx02 = abs(input->points[0].x - input->points[2].x);
@@ -49,27 +47,24 @@ void mutate_bezier(cprimim_bezier *input, int columns, int rows) {
         uint64_t index = random_value % 3;
         cprimim_mutate_point(&input->points[index], columns, rows,
                              MUTATION_DISTANCE);
-    } while (not_valid_initial(input));
+    } while (not_valid_bezier(input));
 }
 
-void random_bezier(cprimim_bezier *input, int columns, int rows) {
-    cprimim_randomize_point(&input->points[0], columns, rows);
-    input->points[1] = input->points[0];
-    cprimim_mutate_point_uniform(&input->points[1], columns, rows,
-                                 MUTATION_DISTANCE);
-    input->points[2] = input->points[1];
-    cprimim_mutate_point_uniform(&input->points[2], columns, rows,
-                                 MUTATION_DISTANCE);
-    mutate_bezier(input, columns, rows);
-}
-static cprimim_bezier stratified_random_bezier(int seed_index, int n_init,
+static cprimim_bezier random_bezier(int seed_index, int n_init,
                                                int columns, int rows) {
-    int G = (int)ceil(sqrt((double)n_init));
-    int cell_x = seed_index % G;
-    int cell_y = seed_index / G;
-    int cell_w = columns / G;
-    int cell_h = rows / G;
 
+   int Gx = (int)floor(sqrt((double)n_init * (double)columns / (double)rows));
+    if (Gx < 1) Gx = 1;
+    int Gy = (n_init + Gx - 1) / Gx;  // ceil(n_init / Gx)
+
+    int cell_x = seed_index % Gx;
+    int cell_y = seed_index / Gx;
+
+    int cell_w = columns / Gx;
+    int cell_h = rows   / Gy;
+
+    if (cell_w < 1) cell_w = 1;
+    if (cell_h < 1) cell_h = 1;
     cprimim_bezier bz = {0};
 
     do {
@@ -83,26 +78,11 @@ static cprimim_bezier stratified_random_bezier(int seed_index, int n_init,
         bz.points[2] = bz.points[1];
         cprimim_mutate_point_uniform(&bz.points[2], columns, rows,
                                      MUTATION_DISTANCE);
-    } while (not_valid_initial(&bz));
+    } while (not_valid_bezier(&bz));
     // mutate_bezier(&bz, columns, rows);
     return bz;
 }
 
-static cprimim_bezier pick_best_initial_bezier(cprimim_Image *orig,
-                                               cprimim_Image *curr, int columns,
-                                               int rows, int n_init) {
-    cprimim_bezier best = {.improvement = INT_MAX};
-
-    for (int i = 0; i < n_init; i++) {
-        cprimim_bezier cand =
-            stratified_random_bezier(i, n_init, columns, rows);
-        cprimim_best_fit(orig, curr, &cand);
-        if (cand.improvement < best.improvement) {
-            best = cand;
-        }
-    }
-    return best;
-}
 // Courtesy to http://members.chello.at/%7Eeasyfilter/Bresenham.pdf
 #define LINE_SEG(FUNC_NAME, CALLBACK)                                          \
     static void FUNC_NAME(cprimim_Image *image, void *payload, int x0, int y0, \
@@ -269,6 +249,7 @@ static inline void clamp_bezier(cprimim_bezier *bz, int columns, int rows) {
     }
 }
 BEST_FIT(bezier)
+BEST_INITIAL(bezier)
 SORT(bezier)
 
 SHAPE_APPROX(bezier)

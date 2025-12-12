@@ -1,10 +1,9 @@
 #include "cprimim.h"
-#include "image.h"
+// #include "image.h"
 #include "stb_image.h"
 #include "stb_image_resize2.h"
 #include "stb_image_write.h"
 #include <flag.h>
-#include <omp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,7 +52,6 @@ int main(int argc, char *argv[]) {
         usage(stdout);
         exit(0);
     }
-    printf("input path is %s", *input_path);
     int rest_argc = flag_rest_argc();
     char **rest_argv = flag_rest_argv();
 
@@ -65,52 +63,91 @@ int main(int argc, char *argv[]) {
     } else if (rest_argc == 1) {
         outfile = rest_argv[0];
     }
-    int x = 0;
-    int y = 0;
-    int n = 0;
-    char *result = argv[1];
-    cprimim_Image input;
-    input.data = stbi_load(*input_path, &input.columns, &input.rows, &n, 3);
-    if (input.data == NULL) {
-        printf("File could not be loaded!\n");
+    int in_w = 0, in_h = 0, in_comp = 0;
+    uint8_t *input_rgb = stbi_load(*input_path, &in_w, &in_h, &in_comp, 3);
+    if (!input_rgb) {
+        fprintf(stderr, "Could not load input file: %s\n", *input_path);
         return EXIT_FAILURE;
     }
-    int processing_columns = *width;
-    int processing_rows =
-        ((double)input.rows / input.columns) * processing_columns;
-    cprimim_Image resized_input;
-    resized_input.columns = processing_columns;
-    resized_input.rows = processing_rows;
-    resized_input.data = stbir_resize_uint8_srgb(
-        input.data, input.columns, input.rows, input.columns * 3, NULL,
-        processing_columns, processing_rows, processing_columns * 3, STBIR_RGB);
-    cprimim_Image small_output = {0};
-    small_output = cprimim_copy_image(&resized_input);
-    cprimim_Context context = cprimim_create_context(
-        *method, *nr_of_shapes, *nr_of_candidates, *nr_of_initial, *threads,
-        *nr_of_tries, processing_columns, processing_rows);
-    cprimim_set_input(&context, resized_input.data);
-    printf("starting approximation..\n");
-    double elapsed = 0;
-    double time = clock();
-    small_output = *cprimim_approximate(&context);
-    elapsed = (double)clock() - time;
-    printf("We have %f fps!\n", CLOCKS_PER_SEC / elapsed);
-    cprimim_Image full_output = {0};
-    full_output.data = stbir_resize_uint8_srgb(
-        small_output.data, small_output.columns, small_output.rows,
-        small_output.columns * 3, NULL, input.columns, input.rows,
-        input.columns * 3, STBIR_RGB);
-    printf("wrote full output\n");
-    int write_succ = stbi_write_png(outfile, input.columns, input.rows, 3,
-                                    full_output.data, input.columns * 3);
-    printf("wrote png\n");
-    printf("columns: %d\n", input.columns);
-    stbi_image_free(input.data);
-    stbi_image_free(resized_input.data);
-    // stbi_image_free(small_output.data);
-    cprimim_destroy_context(&context);
-    // stbi_image_free(full_output.data);
-    // stbi_image_free(output.data);
+
+    const int proc_w = (int)(*width);
+    const int proc_h = (int)(((double)in_h / (double)in_w) * (double)proc_w);
+
+    uint8_t *proc_rgb = stbir_resize_uint8_srgb(
+        input_rgb, in_w, in_h, in_w * 3,
+        NULL, proc_w, proc_h, proc_w * 3,
+        STBIR_RGB);
+
+    if (!proc_rgb) {
+        fprintf(stderr, "Resize failed.\n");
+        stbi_image_free(input_rgb);
+        return EXIT_FAILURE;
+    }
+
+    cprimim_Context *ctx = cprimim_create_context(
+        (enum cprimim_shape)(*method),
+        (size_t)(*nr_of_shapes),
+        (size_t)(*nr_of_candidates),
+        (size_t)(*nr_of_initial),
+        (size_t)(*nr_of_tries),
+        proc_w,
+        proc_h);
+
+    if (!ctx) {
+        fprintf(stderr, "Failed to create cprimim context.\n");
+        stbi_image_free(input_rgb);
+        stbi_image_free(proc_rgb);
+        return EXIT_FAILURE;
+    }
+
+    cprimim_set_input(ctx, proc_rgb);
+
+    fprintf(stdout, "starting approximation..\n");
+    clock_t t0 = clock();
+    cprimim_Image *small_out = cprimim_approximate(ctx);
+    clock_t t1 = clock();
+
+    double elapsed = (double)(t1 - t0);
+    if (elapsed > 0) {
+        fprintf(stdout, "We have %f fps!\n", (double)CLOCKS_PER_SEC / elapsed);
+    }
+
+    uint8_t *small_out_rgb = cprimim_image_data(small_out);
+    if (!small_out_rgb) {
+        fprintf(stderr, "cprimim_image_data returned NULL.\n");
+        cprimim_destroy_context(ctx);
+        stbi_image_free(input_rgb);
+        stbi_image_free(proc_rgb);
+        return EXIT_FAILURE;
+    }
+
+    uint8_t *full_out_rgb = stbir_resize_uint8_srgb(
+        small_out_rgb, proc_w, proc_h, proc_w * 3,
+        NULL, in_w, in_h, in_w * 3,
+        STBIR_RGB);
+
+    if (!full_out_rgb) {
+        fprintf(stderr, "Upscale failed.\n");
+        cprimim_destroy_context(ctx);
+        stbi_image_free(input_rgb);
+        stbi_image_free(proc_rgb);
+        return EXIT_FAILURE;
+    }
+
+    int ok = stbi_write_png(outfile, in_w, in_h, 3, full_out_rgb, in_w * 3);
+    if (!ok) {
+        fprintf(stderr, "Failed to write PNG: %s\n", outfile);
+        stbi_image_free(full_out_rgb);
+        cprimim_destroy_context(ctx);
+        stbi_image_free(input_rgb);
+        stbi_image_free(proc_rgb);
+        return EXIT_FAILURE;
+    }
+
+    stbi_image_free(full_out_rgb);
+    cprimim_destroy_context(ctx);
+    stbi_image_free(input_rgb);
+    stbi_image_free(proc_rgb);
+
     return EXIT_SUCCESS;
 }

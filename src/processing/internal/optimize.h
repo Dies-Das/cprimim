@@ -17,16 +17,11 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
     int rows = input->rows;\
     cprimim_Color avg = cprimim_avg_color(&context->input);\
     cprimim_set_background(output, &avg);\
-    int global_tries = 0;\
-    printf("starting iteration!\n");\
-    uint64_t avg_iterations = 0;\
     {\
-        int tid = omp_get_thread_num();\
-        utils_srand(time(NULL) ^ (uint64_t)tid * 0x9E3779B97F4A7C15ULL);\
+        utils_srand(time(NULL) * 0x9E3779B97F4A7C15ULL);\
         for (int k = 0; k < number_of_lines; k++) {\
             for (int candidate = 0; candidate < context->candidates;\
                  candidate++) {\
-                uint64_t current_iterations = 0;\
                 cprimim_##TYPE old_candidate_shape = {0};\
                 cprimim_##TYPE candidate_shape = {0};\
 \
@@ -36,7 +31,6 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                     input, output, columns, rows, initial_shapes);\
                 size_t number_of_tries = 0;\
                 while (number_of_tries < max_number_of_tries) {\
-                    current_iterations++;\
                     mutate_##TYPE(&candidate_shape, input->columns,\
                                   input->rows);\
                     cprimim_best_fit(input, output, &candidate_shape);\
@@ -50,8 +44,12 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                         number_of_tries = 0;\
                     }\
                 }\
-\
+                if(candidate_shape.improvement>=0){\
+                    candidate--;\
+                }\
+                else{\
                 candidate_shapes[candidate] = candidate_shape;\
+                }\
             }\
             {\
                 sort_##TYPE(candidate_shapes, context->candidates);\
@@ -60,11 +58,10 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
             }\
         }\
     }\
-    printf("done! with average iterations %lu\n", avg_iterations);\
     return;\
 }
 #define SORT(SHAPE)\
-static void sort_##SHAPE(cprimim_##SHAPE *shapes, int n) {\
+void sort_##SHAPE(cprimim_##SHAPE *shapes, int n) {\
     for (int i = 1; i < n; i++) {\
         cprimim_##SHAPE key = shapes[i];\
         int j = i - 1;\
@@ -76,7 +73,7 @@ static void sort_##SHAPE(cprimim_##SHAPE *shapes, int n) {\
     }\
 }
 #define BEST_FIT(TYPE)\
-void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
+static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
                       cprimim_##TYPE *shape) {\
     cprimim_Comparator comparator = {0};\
     comparator.other = output;\
@@ -96,5 +93,22 @@ void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
                                                        comparator.counter;\
     shape->improvement = -(comparator.error_old - error_new / (255 * 255));\
 }
+#define BEST_INITIAL(TYPE)\
+static inline cprimim_##TYPE pick_best_initial_##TYPE(cprimim_Image *orig,\
+                                               cprimim_Image *curr, int columns,\
+                                               int rows, int n_init) {\
+    cprimim_##TYPE best = {.improvement = INT_MAX};\
+\
+    for (int i = 0; i < n_init; i++) {\
+        cprimim_##TYPE cand =\
+            random_##TYPE(i, n_init, columns, rows);\
+        cprimim_best_fit(orig, curr, &cand);\
+        if (cand.improvement < best.improvement) {\
+            best = cand;\
+        }\
+    }\
+    return best;\
+}
+
 #endif
 
