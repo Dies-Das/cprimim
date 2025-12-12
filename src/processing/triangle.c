@@ -6,7 +6,6 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
-#include <omp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -83,6 +82,7 @@ static void FUNC_NAME(cprimim_Image *image, cprimim_triangle *triangle, \
     dwdy[1] = p2.x-p0.x;\
     dwdy[2] = p0.x-p1.x;\
     int w[3] = {0};\
+    int stop_early = 0;\
     \
     for(int y=bounding_box[0].y; y<=bounding_box[1].y; y++){\
         for (int k=0; k<3; k++){\
@@ -90,7 +90,7 @@ static void FUNC_NAME(cprimim_Image *image, cprimim_triangle *triangle, \
         }\
         for(int x=bounding_box[0].x; x<=bounding_box[1].x; x++){\
             if((w[0]|w[1]|w[2])>=0){\
-                CALLBACK(image, x,y, payload);\
+                (CALLBACK(image, x,y, payload)) ;\
             }\
             for (int k=0; k<3; k++){\
                 w[k] -= dwdx[k];\

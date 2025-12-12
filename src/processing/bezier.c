@@ -14,18 +14,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,
-                      cprimim_bezier *bezier);
-// bool not_valid_bezier(cprimim_bezier *input) {
-//     bool valid = 0;
-//     valid |= (input->points[0].x == input->points[1].x &&
-//               input->points[0].y == input->points[1].y);
-//     valid |= (input->points[2].x == input->points[1].x &&
-//               input->points[2].y == input->points[1].y);
-//     valid |= (input->points[0].x == input->points[2].x &&
-//               input->points[0].y == input->points[2].y);
-//     return valid;
-// }
 bool not_valid_bezier(cprimim_bezier *input) {
     bool valid = 0;
     int dx01 = abs(input->points[0].x - input->points[1].x);

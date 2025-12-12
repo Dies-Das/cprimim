@@ -1,3 +1,4 @@
+#include "cprimim_internal.h"
 #include "image_internal.h"
 #include "color.h"
 #include "utils.h"
@@ -9,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int x1, int x2, int y1, int y2);
 cprimim_Image cprimim_copy_image(const cprimim_Image *input) {
     cprimim_Image output = {0};
     long size = input->rows * input->columns * 3;
@@ -80,4 +82,69 @@ void cprimim_average_color_callback(cprimim_Image *restrict image, int x, int y,
     final_color->g += image->data[index + 1];
     final_color->b += image->data[index + 2];
     final_color->count++;
+}
+void update_grid_errors(cprimim_OptState *state, const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int columns, int rows, int regions){
+   int Gx = (int)floor(sqrt((double)regions * (double)columns / (double)rows));
+    if (Gx < 1) Gx = 1;
+    int Gy = (regions + Gx - 1) / Gx;
+    if (Gy < 1) Gy = 1;
+    int cell_w = columns / Gx;
+    int cell_h = rows   / Gy;
+    if (cell_w < 1) cell_w = 1;
+    if (cell_h < 1) cell_h = 1;
+    for(int region=0; region < regions; region++){
+        int cell_x = region % Gx;
+        int cell_y = region / Gx;
+        int x1 = cell_x * cell_w;
+        int y1 = cell_y * cell_h;
+
+        int x2 = (cell_x == Gx - 1) ? columns : (x1 + cell_w);
+        int y2 = (cell_y == Gy - 1) ? rows    : (y1 + cell_h);
+        state->grid_errors[region] = rectangle_error(first, second, x1, x2, y1, y2);
+    }
+    state->cdf[0] = state->grid_errors[0];
+    for(int region=1; region<regions; region++){
+        state->cdf[region] = state->grid_errors[region]+state->cdf[region-1];
+    }
+
+
+}
+int sample_grid(cprimim_OptState* state, int regions){
+    uint64_t total = state->cdf[regions-1];
+    if(total == 0){
+
+    }
+    uint64_t sample = fast_rand();
+    sample %= state->cdf[regions-1];
+    for(int k=0; k<regions;k++){
+        if(sample<state->cdf[k]){
+            return k;
+        }
+    }
+    return regions-1;
+}
+static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int x1, int x2, int y1, int y2){
+    const int columns = first->columns;
+    const uint8_t *restrict a = first->data;
+    const uint8_t *restrict b = second->data;
+    size_t index = 0;
+    uint64_t error = 0;
+    uint64_t local_error = 0;
+    if (x1 < 0) x1 = 0;
+    if (y1 < 0) y1 = 0;
+    if (x2 > columns) x2 = columns;
+    if (y2 > first->rows) y2 = first->rows;
+    for(int y=y1; y<y2; y++){
+        size_t row = (size_t) y * (size_t) columns * CHANNELS;
+        for(int x=x1; x<x2; x++){
+
+            index = row+x*CHANNELS;
+            for(int k=0; k<CHANNELS; k++){ 
+                local_error = first->data[index+k]-second->data[index+k];
+                local_error *= local_error;
+                error += local_error;
+            }
+        }
+    }
+    return error;
 }

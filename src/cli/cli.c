@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     char **input_path = flag_str("input", "in.png", "Image file to load");
     uint64_t *method = flag_uint64(
         "method", 0,
-        "Method to use. line (0) and bezier(1) are implemented so far.");
+        "Method to use. line (0), bezier (1) and triangle (2) are implemented so far.");
     uint64_t *threads = flag_uint64("j", 1, "Number of threads to use.");
 
     if (!flag_parse(argc, argv)) {

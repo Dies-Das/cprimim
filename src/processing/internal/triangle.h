@@ -7,7 +7,7 @@
 #include <stdint.h>
 typedef struct {
         cprimim_Point2i points[3];
-	int improvement;
+	int64_t improvement;
     int determinant;
 	cprimim_Color color;
 } cprimim_triangle;

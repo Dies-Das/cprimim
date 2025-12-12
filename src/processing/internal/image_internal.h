@@ -1,24 +1,24 @@
 #ifndef IMAGE_INTERNAL_H
 #define IMAGE_INTERNAL_H
 #include <stdint.h>
+#include "utils.h"
 #define CHANNELS 3
 #define A 128
 #include "color.h"
-typedef struct {
-        size_t *indices;
-        uint32_t count;
-} cprimim_IndexBuffer;
+typedef struct cprimim_OptState cprimim_OptState;
 typedef struct {
         unsigned char *data;
         int columns;
         int rows;
 } cprimim_Image;
 typedef struct {
-        int improvement;
+        int64_t improvement;
         cprimim_Image *other;
         int64_t sum_diffs[3];
         int64_t sum_diffs_squared[3];
         int64_t error_old;
+        int64_t max_error;
+        int early_out;
         int counter;
 } cprimim_Comparator;
 typedef struct {
@@ -30,14 +30,12 @@ void cprimim_set_image(const cprimim_Image *input, cprimim_Image *output);
 // void cprimim_draw_pixel(cprimim_Image *image, int x, int y,
                         // cprimim_Color color);
 // double cprimim_mse(const cprimim_Image *image1, const cprimim_Image *image2);
+int sample_grid(cprimim_OptState* state, int regions);
+void update_grid_errors(cprimim_OptState *state, const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int columns, int rows, int regions);
 cprimim_Color cprimim_avg_color(const cprimim_Image *image);
 void cprimim_set_background(cprimim_Image *image, const cprimim_Color *color);
-// void cprimim_draw_pixel_callback(cprimim_Image * restrict image, int x, int y,
-//                                  void *data);
 void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
                                     void *data);
-// void cprimim_compare_pixel_callback(cprimim_Image *restrict image, int x, int y,
-//                                     void *data);
 static inline void cprimim_draw_pixel_callback(cprimim_Image *restrict image, int x, int y,
                                  void *restrict data) {
     cprimim_DrawData *restrict drawdata = data;
@@ -52,10 +50,6 @@ static inline void cprimim_draw_pixel_callback(cprimim_Image *restrict image, in
 }
 static inline void cprimim_compare_pixel_callback(cprimim_Image *restrict image, int x, int y,
                                     void *restrict data) {
-    if (x < 0 || y < 0 || x >= image->columns || y >= image->rows) {
-
-        return;
-    }
     cprimim_Comparator *restrict comparator = data;
     cprimim_Image *restrict output = comparator->other;
     size_t index = CHANNELS * (y * output->columns + x);
@@ -79,5 +73,12 @@ static inline void cprimim_compare_pixel_callback(cprimim_Image *restrict image,
         diff = output->data[index + k] - image->data[index + k];
         comparator->error_old += diff * diff;
     }
+}
+static inline uint64_t total_grid_error(uint64_t *grid_errors, size_t nr_initial){
+    uint64_t result = 0;
+    for(int k=0; k<nr_initial; k++){
+        result += grid_errors[k];
+    }
+    return result;
 }
 #endif // !IMAGE_INTERNAL_H

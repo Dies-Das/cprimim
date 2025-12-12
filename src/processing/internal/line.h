@@ -8,7 +8,7 @@
 #include <stdint.h>
 typedef struct {
         cprimim_Point2i points[2];
-	int improvement;
+	int64_t improvement;
 	cprimim_Color color;
 } cprimim_line;
 void cprimim_line_approx(cprimim_Context * context);

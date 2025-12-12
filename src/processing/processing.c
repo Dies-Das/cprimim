@@ -46,8 +46,9 @@ cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
     ctx->nr_shapes = nr_shapes;
     ctx->attempts = attempts;
     ctx->s = s;
-    ctx->shapes = malloc(shape_size * nr_shapes);
-    ctx->candidate_shapes = malloc(shape_size * candidates);
+    ctx->state.shapes = malloc(shape_size * nr_shapes);
+    ctx->state.grid_errors = malloc(sizeof(size_t)*initial_shapes);
+    ctx->state.cdf = malloc(sizeof(size_t)*initial_shapes);
     ctx->output.data = malloc(columns * rows * 3);
     ctx->output.rows = rows;
     ctx->output.columns = columns;
@@ -57,8 +58,8 @@ cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
 }
 void cprimim_destroy_context(cprimim_Context *context) {
     free(context->output.data);
-    free(context->shapes);
-    free(context->candidate_shapes);
+    free(context->state.shapes);
+    free(context->state.candidate_shapes);
 }
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer) {
     context->input.data = buffer;

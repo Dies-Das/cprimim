@@ -5,7 +5,7 @@
 #include "utils.h"
 typedef struct {
         cprimim_Point2i points[3];
-        int improvement;
+        int64_t improvement;
         cprimim_Color color;
 
 } cprimim_bezier;

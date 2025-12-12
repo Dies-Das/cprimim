@@ -3,5 +3,5 @@
 
 #include <stdint.h>
 
-uint32_t _Thread_local rng_state = 2463534242u;
+uint64_t _Thread_local rng_state = 0x9E3779B97F4A7C15ULL;
 void utils_srand(uint64_t seed) { rng_state = seed ? seed : 1; }

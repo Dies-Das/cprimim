@@ -5,11 +5,16 @@
 #include <stddef.h>
 #include <stdint.h>
 enum cprimim_shape { LINE, BEZIER, TRIANGLE, RECTANGLE, ELLIPSE };
-typedef struct cprimim_OptState cprimim_OptState ;
+typedef struct cprimim_OptState{
+    void * shapes;
+    void * candidate_shapes;
+    uint64_t * grid_errors;
+    uint64_t * cdf;
+    cprimim_Profiler prof;
+
+} cprimim_OptState ;
 typedef struct {
         enum cprimim_shape s;
-        void *shapes;
-        void *candidate_shapes;
         cprimim_Image input;
         cprimim_Image output;
         int rows;
@@ -19,7 +24,7 @@ typedef struct {
         size_t initial_shapes;
         size_t attempts;
 
-        cprimim_OptState *opt;
+        cprimim_OptState state;
 } cprimim_Context;
 
 cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
