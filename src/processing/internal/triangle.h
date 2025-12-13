@@ -1,17 +1,9 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 #include "color.h"
-#include "cprimim_internal.h"
 #include "point.h"
-#include <stdbool.h>
-#include <stdint.h>
-typedef struct {
-        cprimim_Point2i points[3];
-	int64_t improvement;
-	int64_t improvement_coarse;
-    int determinant;
-	cprimim_Color color;
-} cprimim_triangle;
+#include "cprimim_internal.h"
 void cprimim_triangle_approx(cprimim_Context * context);
 
+void write_triangle_svg(FILE * file, cprimim_triangle* triangle);
 #endif // !TRIANGLE_H

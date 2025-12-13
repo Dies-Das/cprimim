@@ -247,5 +247,5 @@ void write_bezier_svg(FILE * file, cprimim_bezier* bezier){
     fprintf(file, "<path d=\"M ");
     fprintf(file, "%i %i Q", bezier->points[0].x,bezier->points[0].y);
     for(int k=1; k<3; k++) fprintf(file, " %i %i", bezier->points[k].x,bezier->points[k].y);
-    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" fill=\"transparent\"/>",bezier->color.r,bezier->color.g,bezier->color.b);
+    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" fill=\"transparent\"/>",bezier->color.r,bezier->color.g,bezier->color.b);
 }

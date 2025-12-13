@@ -1,6 +1,7 @@
 #include "cprimim_internal.h"
 #include "image_internal.h"
 #include "color.h"
+#include "shapes.h"
 #include "utils.h"
 #include <assert.h>
 #include <math.h>
@@ -10,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bezier.h"
+#include "line.h"
+#include "triangle.h"
 static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int x1, int x2, int y1, int y2);
 cprimim_Image cprimim_copy_image(const cprimim_Image *input) {
     cprimim_Image output = {0};
@@ -157,24 +160,29 @@ void print_svg_header(FILE* file, int width, int height){
             <title>Approximated image</title>\n\
             <desc>File createt using cprimim.</desc>\n", width, height);
 }
+void print_svg_background(FILE *file, int width, int height, cprimim_Color color){
+    fprintf(file, "<rect x=\"0\" y=\"0\" width=\"%i\" height=\"%i\" fill=\"rgb(%u,%u,%u)\" />", width, height, color.r, color.g, color.b);
+}
 int to_svg(cprimim_Context *context, FILE * file){
     print_svg_header(file, context->columns, context->rows);
-    switch (context->s) {
-        case BEZIER:
-            {
-            for (int k=0; k<context->nr_shapes; k++) {
-                cprimim_bezier * shapes = (cprimim_bezier*)context->state.shapes;
-                printf("drawing bezier..\n");
-                write_bezier_svg(file, &shapes[k]);
+    print_svg_background(file, context->columns, context->rows, context->state.background_color);
+    cprimim_shape * shapes = context->state.shapes;
+    for (int k=0; k<context->nr_shapes; k++) {
+        switch (shapes[k].s) {
+            case BEZIER:
+                write_bezier_svg(file, &shapes[k].shape.bezier);
+                break;
+            case LINE:
+                write_line_svg(file, &shapes[k].shape.line);
+            break;
+            case TRIANGLE:
+                write_triangle_svg(file, &shapes[k].shape.triangle);
+            break;
+            default:
+            break;
             
-            }
-            
-            break;}
-        default:
-        break;
-        
+        }
     }
-
 
     fprintf(file, "</svg>");
     return 0;

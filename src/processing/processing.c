@@ -11,7 +11,7 @@
 #include <time.h>
 #include <string.h>
 
-cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
+cprimim_Context *cprimim_create_context(cprimim_ShapeType s, size_t nr_shapes,
                                        size_t candidates, size_t initial_shapes,
                                        size_t attempts,
                                        int columns, int rows) {
@@ -46,7 +46,7 @@ cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
     ctx->nr_shapes = nr_shapes;
     ctx->attempts = attempts;
     ctx->s = s;
-    ctx->state.shapes = malloc(shape_size * nr_shapes);
+    ctx->state.shapes = malloc(sizeof(cprimim_shape) * nr_shapes);
     ctx->state.grid_errors = malloc(sizeof(size_t)*initial_shapes);
     ctx->state.cdf = malloc(sizeof(size_t)*initial_shapes);
     ctx->output.data = malloc(columns * rows * 3);
@@ -59,7 +59,8 @@ cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
 void cprimim_destroy_context(cprimim_Context *context) {
     free(context->output.data);
     free(context->state.shapes);
-    free(context->state.candidate_shapes);
+    free(context->state.cdf);
+    free(context->state.grid_errors);
 }
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer) {
     context->input.data = buffer;

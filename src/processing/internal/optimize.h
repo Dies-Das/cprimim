@@ -10,14 +10,14 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
     size_t number_of_lines = context->nr_shapes;\
     size_t max_number_of_tries = context->attempts;\
     size_t initial_shapes = context->initial_shapes;\
-    cprimim_##TYPE *shapes = context->state.shapes;\
-    cprimim_##TYPE *candidate_shapes = context->state.candidate_shapes;\
+    cprimim_shape *shapes = context->state.shapes;\
     int columns = input->columns;\
 \
     int rows = input->rows;\
     context->state.prof = (cprimim_Profiler){0};\
     TBEGIN(t_total);\
     cprimim_Color avg = cprimim_avg_color(&context->input);\
+    context->state.background_color = avg;\
     cprimim_set_background(output, &avg);\
     double tries_per_shape = 0;\
     int accepted_shapes = 0;\
@@ -69,6 +69,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                     mutate_##TYPE(&candidate_shape, input->columns,\
                                   input->rows);\
                     /*TBEGIN(tb);*/\
+                    TBEGIN(tb);\
                     cprimim_best_fit(input, output, &candidate_shape, 4);\
                         /*TACCUM(context->state.prof.bestfit_ns, tb);*/\
                     if (candidate_shape.improvement_coarse >=\
@@ -80,9 +81,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                     }\
                     else{\
                         context->state.prof.bestfit_calls++;\
-                    TBEGIN(tb);\
                         cprimim_best_fit(input, output, &candidate_shape, 1);\
-                        TACCUM(context->state.prof.bestfit_ns, tb);\
                     if (candidate_shape.improvement >=\
                         old_candidate_shape.improvement) {\
                         candidate_shape = old_candidate_shape;\
@@ -96,6 +95,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                         number_of_tries = 0;\
                     }\
                     }\
+                    TACCUM(context->state.prof.bestfit_ns, tb);\
                 }\
                 best_improvement = candidate_shape.improvement;\
                 context->state.prof.sum_best_improvement += candidate_shape.improvement;\
@@ -104,9 +104,10 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                 accepted_shapes++;\
                 reduced_since_grid += -candidate_shape.improvement;\
                 rel_drop = reduced_since_grid/(double)total_grid_err;\
-                shapes[k] = candidate_shape;\
+                shapes[k].shape.TYPE = candidate_shape;\
+                shapes[k].s = context->s;\
                 TBEGIN(td);\
-                cprimim_draw_##TYPE(output, &shapes[k], shapes[k].color);\
+                cprimim_draw_##TYPE(output, &candidate_shape, candidate_shape.color);\
                 TACCUM(context->state.prof.draw_ns, td);\
                 context->state.prof.shapes_done++;\
         }\

@@ -133,9 +133,6 @@ static void FUNC_NAME(cprimim_Image *image, cprimim_triangle *triangle, \
         }\
     }\
 }
-bool not_valid_triangle(cprimim_triangle *input) {
-	return input->determinant==0;
-}
 void mutate_triangle(cprimim_triangle *input, int columns, int rows) {
     do {
 
@@ -143,8 +140,7 @@ void mutate_triangle(cprimim_triangle *input, int columns, int rows) {
         uint64_t index = random_value % 3;
         cprimim_mutate_point(&input->points[index], columns, rows,
                              MUTATION_DISTANCE);
-        input->determinant = get_determinant(input->points[0],input->points[1],input->points[2]);
-    } while (not_valid_triangle(input));
+    } while (get_determinant(input->points[0],input->points[1],input->points[2])==0);
     // if(input->determinant<0){
     //     cprimim_Point2i temp = input->points[0];
     //     input->points[0] = input->points[1];
@@ -175,8 +171,7 @@ static cprimim_triangle random_triangle(int seed_index, int n_init,
         triangle.points[2] = triangle.points[1];
         cprimim_mutate_point_uniform(&triangle.points[2], columns, rows,
                                      MUTATION_DISTANCE);
-        triangle.determinant = get_determinant(triangle.points[0],triangle.points[1],triangle.points[2]); 
-    } while (not_valid_triangle(&triangle));
+    } while (get_determinant(triangle.points[0],triangle.points[1],triangle.points[2])==0 );
     // mutate_triangle(&bz, columns, rows);
     // if(triangle.determinant<0){
     //     cprimim_Point2i temp = triangle.points[0];
@@ -203,3 +198,11 @@ BEST_FIT(triangle)
 BEST_INITIAL(triangle)
 
 SHAPE_APPROX(triangle)
+
+void write_triangle_svg(FILE * file, cprimim_triangle* triangle){
+    fprintf(file, "<polygon points=\"");
+    for(int k=0; k<3; k++){
+        fprintf(file, "%i %i ", triangle->points[k].x, triangle->points[k].y);
+    }
+    fprintf(file, "\" fill=\"rgb(%u,%u,%u)\" opacity=\"0.5\"/>", triangle->color.r,triangle->color.g,triangle->color.b);
+}

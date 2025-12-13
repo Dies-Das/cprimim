@@ -1,20 +1,21 @@
 
 #ifndef CPRIMIM_INTERNAL_H
 #define CPRIMIM_INTERNAL_H
+#include "color.h"
 #include "image_internal.h"
+#include "shapes.h"
 #include <stddef.h>
 #include <stdint.h>
-enum cprimim_shape { LINE, BEZIER, TRIANGLE, RECTANGLE, ELLIPSE };
 typedef struct cprimim_OptState{
-    void * shapes;
-    void * candidate_shapes;
+    cprimim_shape * shapes;
     uint64_t * grid_errors;
     uint64_t * cdf;
+    cprimim_Color background_color;
     cprimim_Profiler prof;
 
 } cprimim_OptState ;
 typedef struct {
-        enum cprimim_shape s;
+        cprimim_ShapeType s;
         cprimim_Image input;
         cprimim_Image output;
         int rows;
@@ -27,7 +28,7 @@ typedef struct {
         cprimim_OptState state;
 } cprimim_Context;
 
-cprimim_Context *cprimim_create_context(enum cprimim_shape s, size_t nr_shapes,
+cprimim_Context *cprimim_create_context(cprimim_ShapeType s, size_t nr_shapes,
                                        size_t candidates, size_t initial_shapes,
                                         size_t attempts,
                                        int columns, int rows);
