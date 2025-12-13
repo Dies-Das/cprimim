@@ -12,7 +12,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 #set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
 
-set(CMAKE_C_FLAGS_RELEASE   "-march=native -O3 -DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE   "-march=native -O3 -DNDEBUG -fno-omit-frame-pointer")
 
 set(CMAKE_C_FLAGS_RELWITHDEBINFO  "-march=native -O0 -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS_PROFILE "-O2 -g -pg")

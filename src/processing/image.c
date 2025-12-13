@@ -4,12 +4,12 @@
 #include "utils.h"
 #include <assert.h>
 #include <math.h>
-#include <omp.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bezier.h"
 static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int x1, int x2, int y1, int y2);
 cprimim_Image cprimim_copy_image(const cprimim_Image *input) {
     cprimim_Image output = {0};
@@ -147,4 +147,35 @@ static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cpri
         }
     }
     return error;
+}
+
+void print_svg_header(FILE* file, int width, int height){
+    fprintf(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\"\
+            xmlns:xlink=\"http://www.w3.org/1999/xlink\"\n\
+            version=\"1.1\" baseProfile=\"full\"\n\
+            viewBox=\"0 0 %i %i\">\n\
+            <title>Approximated image</title>\n\
+            <desc>File createt using cprimim.</desc>\n", width, height);
+}
+int to_svg(cprimim_Context *context, FILE * file){
+    print_svg_header(file, context->columns, context->rows);
+    switch (context->s) {
+        case BEZIER:
+            {
+            for (int k=0; k<context->nr_shapes; k++) {
+                cprimim_bezier * shapes = (cprimim_bezier*)context->state.shapes;
+                printf("drawing bezier..\n");
+                write_bezier_svg(file, &shapes[k]);
+            
+            }
+            
+            break;}
+        default:
+        break;
+        
+    }
+
+
+    fprintf(file, "</svg>");
+    return 0;
 }

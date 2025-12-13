@@ -20,6 +20,8 @@ typedef struct {
         int64_t max_error;
         int early_out;
         int counter;
+        int iter;
+        int stride;
 } cprimim_Comparator;
 typedef struct {
         cprimim_Image *output;
@@ -51,6 +53,10 @@ static inline void cprimim_draw_pixel_callback(cprimim_Image *restrict image, in
 static inline void cprimim_compare_pixel_callback(cprimim_Image *restrict image, int x, int y,
                                     void *restrict data) {
     cprimim_Comparator *restrict comparator = data;
+    comparator->iter++;
+    if(comparator->iter%comparator->stride!=0){
+        return;
+    }
     cprimim_Image *restrict output = comparator->other;
     size_t index = CHANNELS * (y * output->columns + x);
     int old_r = image->data[index];
@@ -69,10 +75,12 @@ static inline void cprimim_compare_pixel_callback(cprimim_Image *restrict image,
     comparator->sum_diffs[2] += diff;
     comparator->sum_diffs_squared[2] += diff * diff;
     comparator->counter++;
-    for (int k = 0; k < 3; k++) {
-        diff = output->data[index + k] - image->data[index + k];
-        comparator->error_old += diff * diff;
-    }
+    diff = new_r - old_r;
+    comparator->error_old += 1*diff * diff;
+    diff = new_g - old_g;
+    comparator->error_old += 1*diff * diff;
+    diff = new_b - old_b;
+    comparator->error_old += diff * diff;
 }
 static inline uint64_t total_grid_error(uint64_t *grid_errors, size_t nr_initial){
     uint64_t result = 0;
@@ -81,4 +89,6 @@ static inline uint64_t total_grid_error(uint64_t *grid_errors, size_t nr_initial
     }
     return result;
 }
+
+// int to_svg(cprimim_Context *context, FILE * file);
 #endif // !IMAGE_INTERNAL_H

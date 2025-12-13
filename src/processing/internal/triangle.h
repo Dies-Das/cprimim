@@ -8,6 +8,7 @@
 typedef struct {
         cprimim_Point2i points[3];
 	int64_t improvement;
+	int64_t improvement_coarse;
     int determinant;
 	cprimim_Color color;
 } cprimim_triangle;

@@ -112,6 +112,9 @@ int main(int argc, char *argv[]) {
         fprintf(stdout, "We have %f fps!\n", (double)CLOCKS_PER_SEC / elapsed);
     }
 
+    FILE * ptr = fopen("test.svg", "w");
+    to_svg(ctx, ptr);
+    fclose(ptr);
     uint8_t *small_out_rgb = cprimim_image_data(small_out);
     if (!small_out_rgb) {
         fprintf(stderr, "cprimim_image_data returned NULL.\n");
@@ -143,7 +146,6 @@ int main(int argc, char *argv[]) {
         stbi_image_free(proc_rgb);
         return EXIT_FAILURE;
     }
-
     stbi_image_free(full_out_rgb);
     cprimim_destroy_context(ctx);
     stbi_image_free(input_rgb);

@@ -63,7 +63,7 @@ static cprimim_bezier random_bezier(int seed_index, int n_init,
         bz.points[1] = bz.points[0];
         cprimim_mutate_point_uniform(&bz.points[1], columns, rows,
                                      MUTATION_DISTANCE);
-        bz.points[2] = bz.points[1];
+        bz.points[2] = bz.points[0];
         cprimim_mutate_point_uniform(&bz.points[2], columns, rows,
                                      MUTATION_DISTANCE);
     } while (not_valid_bezier(&bz));
@@ -241,3 +241,11 @@ BEST_INITIAL(bezier)
 SORT(bezier)
 
 SHAPE_APPROX(bezier)
+
+
+void write_bezier_svg(FILE * file, cprimim_bezier* bezier){
+    fprintf(file, "<path d=\"M ");
+    fprintf(file, "%i %i Q", bezier->points[0].x,bezier->points[0].y);
+    for(int k=1; k<3; k++) fprintf(file, " %i %i", bezier->points[k].x,bezier->points[k].y);
+    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" fill=\"transparent\"/>",bezier->color.r,bezier->color.g,bezier->color.b);
+}

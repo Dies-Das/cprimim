@@ -2,6 +2,7 @@
 #define CPRIMIM_H
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 enum cprimim_shape { LINE, BEZIER, TRIANGLE, RECTANGLE, ELLIPSE };
 typedef struct cprimim_Context cprimim_Context;
 typedef struct cprimim_Image cprimim_Image;
@@ -14,4 +15,5 @@ void cprimim_destroy_context(cprimim_Context *context);
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer);
 cprimim_Image *cprimim_approximate(cprimim_Context *context);
 uint8_t *cprimim_image_data(const cprimim_Image *);
+int to_svg(cprimim_Context *context, FILE * file);
 #endif // !CPRIMIM_H

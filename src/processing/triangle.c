@@ -57,49 +57,80 @@ int get_determinant(cprimim_Point2i point1,cprimim_Point2i point2,cprimim_Point2
     cprimim_Point2i ac = {point3.x-point1.x,point3.y-point1.y};
     return ab.y*ac.x-ab.x*ac.y;
 }
+// #define TRIANGLE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)\
+// static void FUNC_NAME(cprimim_Image *image, cprimim_triangle *triangle, \
+//                                   void *payload) {\
+//     Edge edges[3];\
+//     for(int k=0; k<3; k++){\
+//         edges[k] = create_edge(triangle->points[k], triangle->points[(k+1)%3]);\
+// }\
+//     cprimim_Point2i bounding_box[2] = {top_left(triangle), bottom_right(triangle)};\
+//     cprimim_Point2i p0 = triangle->points[0];\
+//     cprimim_Point2i p1 = triangle->points[1];\
+//     cprimim_Point2i p2 = triangle->points[2];\
+//     int edge_distances[3] = {0};\
+//     edge_distances[0] = get_determinant(p1, p2, bounding_box[0]);\
+//     edge_distances[1] = get_determinant(p2, p0, bounding_box[0]);\
+//     edge_distances[2] = get_determinant(p0, p1, bounding_box[0]);\
+// \
+//     int dwdx[3] = {0};\
+//     dwdx[0] = p1.y-p2.y;\
+//     dwdx[1] = p2.y-p0.y;\
+//     dwdx[2] = p0.y-p1.y;\
+//     int dwdy[3] = {0};\
+//     dwdy[0] = p1.x-p2.x;\
+//     dwdy[1] = p2.x-p0.x;\
+//     dwdy[2] = p0.x-p1.x;\
+//     int w[3] = {0};\
+//     int stop_early = 0;\
+//     \
+//     for(int y=bounding_box[0].y; y<=bounding_box[1].y; y++){\
+//         for (int k=0; k<3; k++){\
+//             w[k] = edge_distances[k];\
+//         }\
+//         for(int x=bounding_box[0].x; x<=bounding_box[1].x; x++){\
+//             if((w[0]|w[1]|w[2])>=0){\
+//                 (CALLBACK(image, x,y, payload)) ;\
+//             }\
+//             for (int k=0; k<3; k++){\
+//                 w[k] -= dwdx[k];\
+//             }\
+//         }\
+//         for (int k=0; k<3; k++){\
+//             edge_distances[k] += dwdy[k];\
+//         }\
+// \
+//     }\
+// }
 #define TRIANGLE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)\
 static void FUNC_NAME(cprimim_Image *image, cprimim_triangle *triangle, \
                                   void *payload) {\
-    Edge edges[3];\
-    for(int k=0; k<3; k++){\
-        edges[k] = create_edge(triangle->points[k], triangle->points[(k+1)%3]);\
-}\
-    cprimim_Point2i bounding_box[2] = {top_left(triangle), bottom_right(triangle)};\
-    cprimim_Point2i p0 = triangle->points[0];\
-    cprimim_Point2i p1 = triangle->points[1];\
-    cprimim_Point2i p2 = triangle->points[2];\
-    int edge_distances[3] = {0};\
-    edge_distances[0] = get_determinant(p1, p2, bounding_box[0]);\
-    edge_distances[1] = get_determinant(p2, p0, bounding_box[0]);\
-    edge_distances[2] = get_determinant(p0, p1, bounding_box[0]);\
-\
-    int dwdx[3] = {0};\
-    dwdx[0] = p1.y-p2.y;\
-    dwdx[1] = p2.y-p0.y;\
-    dwdx[2] = p0.y-p1.y;\
-    int dwdy[3] = {0};\
-    dwdy[0] = p1.x-p2.x;\
-    dwdy[1] = p2.x-p0.x;\
-    dwdy[2] = p0.x-p1.x;\
-    int w[3] = {0};\
-    int stop_early = 0;\
+    cprimim_Point2i p[3] = {triangle->points[0], triangle->points[1], triangle->points[2]};\
+    /* Sort by y */\
+    if (p[0].y > p[1].y) { cprimim_Point2i t = p[0]; p[0] = p[1]; p[1] = t; }\
+    if (p[1].y > p[2].y) { cprimim_Point2i t = p[1]; p[1] = p[2]; p[2] = t; }\
+    if (p[0].y > p[1].y) { cprimim_Point2i t = p[0]; p[0] = p[1]; p[1] = t; }\
     \
-    for(int y=bounding_box[0].y; y<=bounding_box[1].y; y++){\
-        for (int k=0; k<3; k++){\
-            w[k] = edge_distances[k];\
+    int y0 = p[0].y, y1 = p[1].y, y2 = p[2].y;\
+    int x0 = p[0].x, x1 = p[1].x, x2 = p[2].x;\
+    \
+    if (y0 == y2) return;\
+    \
+    for (int y = y0; y <= y2; y++) {\
+        int x_long = x0 + (x2 - x0) * (y - y0) / (y2 - y0);\
+        int x_short;\
+        if (y < y1) {\
+            if (y1 == y0) continue;\
+            x_short = x0 + (x1 - x0) * (y - y0) / (y1 - y0);\
+        } else {\
+            if (y2 == y1) continue;\
+            x_short = x1 + (x2 - x1) * (y - y1) / (y2 - y1);\
         }\
-        for(int x=bounding_box[0].x; x<=bounding_box[1].x; x++){\
-            if((w[0]|w[1]|w[2])>=0){\
-                (CALLBACK(image, x,y, payload)) ;\
-            }\
-            for (int k=0; k<3; k++){\
-                w[k] -= dwdx[k];\
-            }\
+        int xl = x_long < x_short ? x_long : x_short;\
+        int xr = x_long < x_short ? x_short : x_long;\
+        for (int x = xl; x <= xr; x++) {\
+            CALLBACK(image, x, y, payload);\
         }\
-        for (int k=0; k<3; k++){\
-            edge_distances[k] += dwdy[k];\
-        }\
-\
     }\
 }
 bool not_valid_triangle(cprimim_triangle *input) {
@@ -114,13 +145,13 @@ void mutate_triangle(cprimim_triangle *input, int columns, int rows) {
                              MUTATION_DISTANCE);
         input->determinant = get_determinant(input->points[0],input->points[1],input->points[2]);
     } while (not_valid_triangle(input));
-    if(input->determinant<0){
-        cprimim_Point2i temp = input->points[0];
-        input->points[0] = input->points[1];
-        
-        input->points[1] = temp;
-        input->determinant *= -1;
-    }
+    // if(input->determinant<0){
+    //     cprimim_Point2i temp = input->points[0];
+    //     input->points[0] = input->points[1];
+    //     
+    //     input->points[1] = temp;
+    //     input->determinant *= -1;
+    // }
 }
 
 static cprimim_triangle random_triangle(int seed_index, int n_init,
@@ -147,13 +178,13 @@ static cprimim_triangle random_triangle(int seed_index, int n_init,
         triangle.determinant = get_determinant(triangle.points[0],triangle.points[1],triangle.points[2]); 
     } while (not_valid_triangle(&triangle));
     // mutate_triangle(&bz, columns, rows);
-    if(triangle.determinant<0){
-        cprimim_Point2i temp = triangle.points[0];
-        triangle.points[0] = triangle.points[1];
-        
-        triangle.points[1] = temp;
-        triangle.determinant *= -1;
-    }
+    // if(triangle.determinant<0){
+    //     cprimim_Point2i temp = triangle.points[0];
+    //     triangle.points[0] = triangle.points[1];
+    //     
+    //     triangle.points[1] = temp;
+    //     triangle.determinant *= -1;
+    // }
     return triangle;
 }
 TRIANGLE_PIXEL_ITERATOR(improvement, cprimim_compare_pixel_callback)

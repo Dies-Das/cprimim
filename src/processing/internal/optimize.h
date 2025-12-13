@@ -25,7 +25,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
     uint64_t total_grid_err = 0;\
     uint64_t reduced_since_grid = 0;\
     double rel_drop = 0;\
-    double rel_thresh = 0.1;\
+    double rel_thresh = 0.05;\
     int64_t start_improvement = 0;\
     int64_t best_improvement = 0;\
     update_grid_errors(&context->state, input, output, columns, rows, initial_shapes);\
@@ -48,6 +48,8 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
 \
                 candidate_shape.improvement = INT_MAX;\
                 old_candidate_shape.improvement = INT_MAX;\
+                candidate_shape.improvement_coarse = INT_MAX;\
+                old_candidate_shape.improvement_coarse = INT_MAX;\
                 context->state.prof.bestfit_calls++;\
                 candidate_shape = pick_best_initial_##TYPE(&context->state,\
                     input, output, columns, rows, initial_shapes);\
@@ -56,6 +58,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                     k--;\
                     continue;\
                 }\
+                old_candidate_shape = candidate_shape;\
                 start_improvement = candidate_shape.improvement;\
                 context->state.prof.sum_start_improvement += candidate_shape.improvement;\
                 size_t number_of_tries = 0;\
@@ -65,20 +68,33 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                     tries_per_shape++;\
                     mutate_##TYPE(&candidate_shape, input->columns,\
                                   input->rows);\
+                    /*TBEGIN(tb);*/\
+                    cprimim_best_fit(input, output, &candidate_shape, 4);\
+                        /*TACCUM(context->state.prof.bestfit_ns, tb);*/\
+                    if (candidate_shape.improvement_coarse >=\
+                        old_candidate_shape.improvement_coarse) {\
+                        candidate_shape = old_candidate_shape;\
+                        number_of_tries++;\
+                        /*context->state.prof.mutations_rejected++;*/\
+                    \
+                    }\
+                    else{\
+                        context->state.prof.bestfit_calls++;\
                     TBEGIN(tb);\
-                    context->state.prof.bestfit_calls++;\
-                    cprimim_best_fit(input, output, &candidate_shape);\
-                    TACCUM(context->state.prof.bestfit_ns, tb);\
+                        cprimim_best_fit(input, output, &candidate_shape, 1);\
+                        TACCUM(context->state.prof.bestfit_ns, tb);\
                     if (candidate_shape.improvement >=\
                         old_candidate_shape.improvement) {\
                         candidate_shape = old_candidate_shape;\
                         number_of_tries++;\
                         context->state.prof.mutations_rejected++;\
-\
-                    } else {\
+                    \
+                    }\
+                        else {\
                         context->state.prof.mutations_accepted++;\
                         old_candidate_shape = candidate_shape;\
                         number_of_tries = 0;\
+                    }\
                     }\
                 }\
                 best_improvement = candidate_shape.improvement;\
@@ -113,25 +129,35 @@ void sort_##SHAPE(cprimim_##SHAPE *shapes, int n) {\
 }
 #define BEST_FIT(TYPE)\
 static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
-                      cprimim_##TYPE *shape) {\
+                      cprimim_##TYPE *shape, int stride) {\
     cprimim_Comparator comparator = {0};\
     comparator.max_error = INT64_MAX;\
     comparator.other = output;\
+    comparator.stride = stride;\
     improvement(image, shape, &comparator);\
+    if (comparator.counter == 0) {\
+        shape->improvement_coarse = 0; \
+    return;\
+    }\
     int64_t denom = A * comparator.counter;\
     shape->color.r = cprimim_clamp(-comparator.sum_diffs[0] / denom, 0, 255);\
     shape->color.g = cprimim_clamp(-comparator.sum_diffs[1] / denom, 0, 255);\
     shape->color.b = cprimim_clamp(-comparator.sum_diffs[2] / denom, 0, 255);\
-    int64_t error_new =\
-        comparator.sum_diffs_squared[0] -\
-        comparator.sum_diffs[0] * comparator.sum_diffs[0] / comparator.counter;\
-    error_new += comparator.sum_diffs_squared[1] - comparator.sum_diffs[1] *\
-                                                       comparator.sum_diffs[1] /\
+    int64_t error_new =1*(\
+        comparator.sum_diffs_squared[0]-\
+        comparator.sum_diffs[0] * comparator.sum_diffs[0] / comparator.counter);\
+    error_new += 1*(comparator.sum_diffs_squared[1]  - comparator.sum_diffs[1] *\
+                                                       comparator.sum_diffs[1]  /\
+                                                       comparator.counter);\
+    error_new += comparator.sum_diffs_squared[2]  - comparator.sum_diffs[2] *\
+                                                       comparator.sum_diffs[2]  /\
                                                        comparator.counter;\
-    error_new += comparator.sum_diffs_squared[2] - comparator.sum_diffs[2] *\
-                                                       comparator.sum_diffs[2] /\
-                                                       comparator.counter;\
-    shape->improvement = -(comparator.error_old - error_new / (255 * 255));\
+    if(stride == 1){\
+    shape->improvement = -(comparator.error_old- error_new/ (255 * 255));\
+}\
+    else{\
+    shape->improvement_coarse = -(comparator.error_old- error_new/ (255 * 255));\
+}\
 }
 #if 1
 #define BEST_INITIAL(TYPE)\
@@ -146,7 +172,7 @@ static inline cprimim_##TYPE pick_best_initial_##TYPE(cprimim_OptState* state, c
         int index = sample_grid(state, n_init);\
         cand =\
             random_##TYPE(index, n_init, columns, rows);\
-        cprimim_best_fit(orig, curr, &cand);\
+        cprimim_best_fit(orig, curr, &cand, 1);\
         if(cand.improvement < best.improvement) best=cand;\
     }\
     return best;\
