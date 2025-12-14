@@ -19,24 +19,6 @@ cprimim_Context *cprimim_create_context(ShapeType s, size_t nr_shapes,
     if (!ctx) return NULL;
     memset(ctx, 0, sizeof *ctx);
     size_t shape_size = 0;
-    switch (s) {
-    case LINE:
-        shape_size = sizeof(line);
-        break;
-    case BEZIER:
-        shape_size = sizeof(bezier);
-        break;
-    case TRIANGLE:
-        shape_size = sizeof(triangle);
-        break;
-    case RECTANGLE:
-        break;
-    case ELLIPSE:
-        break;
-    default:
-        fprintf(stderr, "Shape either does not exist or is not implemented.\n");
-        return ctx;
-    }
     // utils_srand(time(NULL));
 
     ctx->rows = rows;

@@ -7,34 +7,37 @@
 #include <stddef.h>
 #include <stdint.h>
 
-
-typedef struct OptState{
-    shape * shapes;
-    uint64_t * grid_errors;
-    uint64_t * cdf;
+typedef struct Stage
+{
+    ShapeType s;
+    size_t offset;
+    size_t number_of_shapes;
+    uint8_t thickness;
+    size_t maximum_failures;
+} Stage;
+typedef struct OptState
+{
+    shape *shapes;
+    uint64_t *grid_errors;
+    uint64_t *cdf;
     Color background_color;
     Profiler prof;
 
-} OptState ;
-typedef struct {
-        ShapeType s;
-        Image input;
-        Image output;
-        int rows;
-        int columns;
-        size_t nr_shapes;
-        size_t candidates;
-        size_t initial_shapes;
-        size_t attempts;
-
-        OptState state;
+} OptState;
+typedef struct
+{
+    Image input;
+    Image output;
+    int rows;
+    int columns;
+    OptState state;
+    Stage *stages;
 } cprimim_Context;
 
-cprimim_Context *create_context(ShapeType s, size_t nr_shapes,
-                                       size_t candidates, size_t initial_shapes,
-                                        size_t attempts,
-                                       int columns, int rows);
+cprimim_Context *create_context(ShapeType s, size_t nr_shapes, size_t candidates,
+                                size_t initial_shapes, size_t attempts, int columns, int rows);
+cprimim_Context *create_context_from_file(const char *config_path);
 void destroy_context(cprimim_Context *context);
-void set_input(cprimim_Context *context, uint8_t *buffer);
+void set_input(cprimim_Context *context, uint8_t *buffer, int columns, int rows);
 Image *approximate(cprimim_Context *context);
 #endif // !INTERNAL_H
