@@ -3,11 +3,11 @@
 typedef struct {
         int x;
         int y;
-} cprimim_Point2i;
-void cprimim_randomize_point(cprimim_Point2i *point, int columns, int rows);
-int cprimim_dot(cprimim_Point2i p1, cprimim_Point2i p2);
-void cprimim_mutate_point(cprimim_Point2i *p, int columns, int rows,
+} Point2i;
+void randomize_point(Point2i *point, int columns, int rows);
+int dot(Point2i p1, Point2i p2);
+void mutate_point(Point2i *p, int columns, int rows,
                           int distance);
-void cprimim_mutate_point_uniform(cprimim_Point2i *p, int columns, int rows,
+void mutate_point_uniform(Point2i *p, int columns, int rows,
                                   int distance);
 #endif

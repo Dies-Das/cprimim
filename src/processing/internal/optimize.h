@@ -4,21 +4,18 @@
 
 // This is the optimizer macro. For a shape one needs to implement drawing and mutating.
 #define SHAPE_APPROX(TYPE)\
-void cprimim_##TYPE##_approx(cprimim_Context *context) {\
-    cprimim_Image *input = &context->input;\
-    cprimim_Image *output = &context->output;\
+void TYPE##_approx(cprimim_Context *context) {\
+    Image *input = &context->input;\
+    Image *output = &context->output;\
     size_t number_of_lines = context->nr_shapes;\
     size_t max_number_of_tries = context->attempts;\
     size_t initial_shapes = context->initial_shapes;\
-    cprimim_shape *shapes = context->state.shapes;\
+    shape *shapes = context->state.shapes;\
     int columns = input->columns;\
 \
     int rows = input->rows;\
-    context->state.prof = (cprimim_Profiler){0};\
+    context->state.prof = (Profiler){0};\
     TBEGIN(t_total);\
-    cprimim_Color avg = cprimim_avg_color(&context->input);\
-    context->state.background_color = avg;\
-    cprimim_set_background(output, &avg);\
     double tries_per_shape = 0;\
     int accepted_shapes = 0;\
     bool rejected = false;\
@@ -43,8 +40,8 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                 rejected = false;\
                 TACCUM(context->state.prof.grid_ns, tg);\
                 int tries_shape = 0;\
-                cprimim_##TYPE old_candidate_shape = {0};\
-                cprimim_##TYPE candidate_shape = {0};\
+                TYPE old_candidate_shape = {0};\
+                TYPE candidate_shape = {0};\
 \
                 candidate_shape.improvement = INT_MAX;\
                 old_candidate_shape.improvement = INT_MAX;\
@@ -70,7 +67,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                                   input->rows);\
                     /*TBEGIN(tb);*/\
                     TBEGIN(tb);\
-                    cprimim_best_fit(input, output, &candidate_shape, 4);\
+                    best_fit(input, output, &candidate_shape, 4);\
                         /*TACCUM(context->state.prof.bestfit_ns, tb);*/\
                     if (candidate_shape.improvement_coarse >=\
                         old_candidate_shape.improvement_coarse) {\
@@ -81,7 +78,7 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                     }\
                     else{\
                         context->state.prof.bestfit_calls++;\
-                        cprimim_best_fit(input, output, &candidate_shape, 1);\
+                        best_fit(input, output, &candidate_shape, 1);\
                     if (candidate_shape.improvement >=\
                         old_candidate_shape.improvement) {\
                         candidate_shape = old_candidate_shape;\
@@ -107,19 +104,19 @@ void cprimim_##TYPE##_approx(cprimim_Context *context) {\
                 shapes[k].shape.TYPE = candidate_shape;\
                 shapes[k].s = context->s;\
                 TBEGIN(td);\
-                cprimim_draw_##TYPE(output, &candidate_shape, candidate_shape.color);\
+                draw_##TYPE(output, &candidate_shape, candidate_shape.color);\
                 TACCUM(context->state.prof.draw_ns, td);\
                 context->state.prof.shapes_done++;\
         }\
     }\
     TACCUM(context->state.prof.approx_ns, t_total);\
-    cprimim_print_profile(&context->state.prof);\
+    print_profile(&context->state.prof);\
     return;\
 }
 #define SORT(SHAPE)\
-void sort_##SHAPE(cprimim_##SHAPE *shapes, int n) {\
+void sort_##SHAPE(SHAPE *shapes, int n) {\
     for (int i = 1; i < n; i++) {\
-        cprimim_##SHAPE key = shapes[i];\
+        SHAPE key = shapes[i];\
         int j = i - 1;\
         while (j >= 0 && shapes[j].improvement > key.improvement) {\
             shapes[j + 1] = shapes[j];\
@@ -129,9 +126,9 @@ void sort_##SHAPE(cprimim_##SHAPE *shapes, int n) {\
     }\
 }
 #define BEST_FIT(TYPE)\
-static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
-                      cprimim_##TYPE *shape, int stride) {\
-    cprimim_Comparator comparator = {0};\
+static void best_fit(Image *image, Image *output,\
+                      TYPE *shape, int stride) {\
+    Comparator comparator = {0};\
     comparator.max_error = INT64_MAX;\
     comparator.other = output;\
     comparator.stride = stride;\
@@ -141,9 +138,9 @@ static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
     return;\
     }\
     int64_t denom = A * comparator.counter;\
-    shape->color.r = cprimim_clamp(-comparator.sum_diffs[0] / denom, 0, 255);\
-    shape->color.g = cprimim_clamp(-comparator.sum_diffs[1] / denom, 0, 255);\
-    shape->color.b = cprimim_clamp(-comparator.sum_diffs[2] / denom, 0, 255);\
+    shape->color.r = clamp(-comparator.sum_diffs[0] / denom, 0, 255);\
+    shape->color.g = clamp(-comparator.sum_diffs[1] / denom, 0, 255);\
+    shape->color.b = clamp(-comparator.sum_diffs[2] / denom, 0, 255);\
     int64_t error_new =1*(\
         comparator.sum_diffs_squared[0]-\
         comparator.sum_diffs[0] * comparator.sum_diffs[0] / comparator.counter);\
@@ -162,18 +159,18 @@ static void cprimim_best_fit(cprimim_Image *image, cprimim_Image *output,\
 }
 #if 1
 #define BEST_INITIAL(TYPE)\
-static inline cprimim_##TYPE pick_best_initial_##TYPE(cprimim_OptState* state, cprimim_Image *orig,\
-                                               cprimim_Image *curr, int columns,\
+static inline TYPE pick_best_initial_##TYPE(OptState* state, Image *orig,\
+                                               Image *curr, int columns,\
                                                int rows, int n_init) {\
 \
-    cprimim_##TYPE best = {0};\
-    cprimim_##TYPE cand = {0};\
+    TYPE best = {0};\
+    TYPE cand = {0};\
     best.improvement = INT64_MAX;\
     for(int k=0; k<8; k++){\
         int index = sample_grid(state, n_init);\
         cand =\
             random_##TYPE(index, n_init, columns, rows);\
-        cprimim_best_fit(orig, curr, &cand, 1);\
+        best_fit(orig, curr, &cand, 1);\
         if(cand.improvement < best.improvement) best=cand;\
     }\
     return best;\
@@ -181,14 +178,14 @@ static inline cprimim_##TYPE pick_best_initial_##TYPE(cprimim_OptState* state, c
 #else
 
 #define BEST_INITIAL(TYPE)\
-static inline cprimim_##TYPE pick_best_initial_##TYPE(cprimim_OptState* state, cprimim_Image *orig,\
-                                               cprimim_Image *curr, int columns,\
+static inline ##TYPE pick_best_initial_##TYPE(OptState* state, Image *orig,\
+                                               Image *curr, int columns,\
                                                int rows, int n_init) {\
 \
     int index = sample_grid(state, n_init);\
-    cprimim_##TYPE cand =\
+    ##TYPE cand =\
         random_##TYPE(index, n_init, columns, rows);\
-    cprimim_best_fit(orig, curr, &cand);\
+    best_fit(orig, curr, &cand);\
     return cand;\
 }
 #endif

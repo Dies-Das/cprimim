@@ -16,7 +16,7 @@
 
 
 #define LINE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)\
-static void FUNC_NAME(cprimim_Image *image, cprimim_line *line, \
+static void FUNC_NAME(Image *image, line *line, \
                                   void *payload) {\
     int x0 = line->points[0].x;\
     int x1 = line->points[1].x;\
@@ -68,7 +68,7 @@ static void FUNC_NAME(cprimim_Image *image, cprimim_line *line, \
     }\
     return;\
 }
-static cprimim_line random_line(int seed_index, int n_init,
+static line random_line(int seed_index, int n_init,
                                                int columns, int rows) {
     int G = (int)ceil(sqrt((double)n_init));
     int cell_x = seed_index % G;
@@ -76,45 +76,45 @@ static cprimim_line random_line(int seed_index, int n_init,
     int cell_w = columns / G;
     int cell_h = rows / G;
 
-    cprimim_line bz = {0};
+    line bz = {0};
 
-        int x0 = cell_x * cell_w + cprimim_uniform_distribution(0, cell_w);
-        int y0 = cell_y * cell_h + cprimim_uniform_distribution(0, cell_h);
-        bz.thickness = cprimim_uniform_distribution(1, 4);
+        int x0 = cell_x * cell_w + uniform_distribution(0, cell_w);
+        int y0 = cell_y * cell_h + uniform_distribution(0, cell_h);
+        bz.thickness = uniform_distribution(1, 4);
         bz.points[0].x = x0;
         bz.points[0].y = y0;
         bz.points[1] = bz.points[0];
-        cprimim_mutate_point_uniform(&bz.points[1], columns, rows,
+        mutate_point_uniform(&bz.points[1], columns, rows,
                                      MUTATION_DISTANCE);
     // mutate_line(&bz, columns, rows);
     return bz;
 }
 
-LINE_PIXEL_ITERATOR(improvement, cprimim_compare_pixel_callback)
-LINE_PIXEL_ITERATOR(draw, cprimim_draw_pixel_callback)
+LINE_PIXEL_ITERATOR(improvement, compare_pixel_callback)
+LINE_PIXEL_ITERATOR(draw, draw_pixel_callback)
 SORT(line)
 BEST_FIT(line)
 BEST_INITIAL(line)
-void cprimim_draw_line(cprimim_Image *image, cprimim_line *line,
-                         cprimim_Color color) {
-    cprimim_DrawData data = {0};
+void draw_line(Image *image, line *line,
+                         Color color) {
+    DrawData data = {0};
     data.color = &color;
     data.output = image;
     draw(image, line, &data);
 }
-void mutate_line(cprimim_line *line, int columns, int rows) {
+void mutate_line(line *line, int columns, int rows) {
     int index = fast_rand() & 1;
-    cprimim_mutate_point(&line->points[index], columns, rows,
+    mutate_point(&line->points[index], columns, rows,
                          MUTATION_DISTANCE);
     index = fast_rand() & 1;
     if(index){
-        line->thickness += cprimim_uniform_distribution(-1, 2);
-        line->thickness = cprimim_clamp(line->thickness, 1, 8);
+        line->thickness += uniform_distribution(-1, 2);
+        line->thickness = clamp(line->thickness, 1, 8);
     } 
 }
 
 SHAPE_APPROX(line)
-void write_line_svg(FILE * file, cprimim_line* line){
+void write_line_svg(FILE * file, line* line){
     fprintf(file, "<line x1=\"%i\" x2=\"%i\" y1=\"%i\" y2=\"%i\"", line->points[0].x,line->points[1].x, line->points[0].y,line->points[1].y);
     fprintf(file, " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" stroke-width=\"%i\"/>",line->color.r,line->color.g,line->color.b, line->thickness);
 }

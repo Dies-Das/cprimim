@@ -13,9 +13,9 @@
 #include "bezier.h"
 #include "line.h"
 #include "triangle.h"
-static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int x1, int x2, int y1, int y2);
-cprimim_Image cprimim_copy_image(const cprimim_Image *input) {
-    cprimim_Image output = {0};
+static uint64_t rectangle_error(const Image *restrict  first, const Image *restrict second, int x1, int x2, int y1, int y2);
+Image copy_image(const Image *input) {
+    Image output = {0};
     long size = input->rows * input->columns * 3;
     output.data = malloc(size);
     if (output.data == NULL) {
@@ -27,8 +27,8 @@ cprimim_Image cprimim_copy_image(const cprimim_Image *input) {
     memcpy(output.data, input->data, size);
     return output;
 }
-void cprimim_draw_pixel(cprimim_Image *image, int x, int y,
-                        cprimim_Color color) {
+void draw_pixel(Image *image, int x, int y,
+                        Color color) {
     int index = y * image->columns * CHANNELS + CHANNELS * x;
     unsigned dr = image->data[index], dg = image->data[index + 1],
              db = image->data[index + 2];
@@ -37,8 +37,8 @@ void cprimim_draw_pixel(cprimim_Image *image, int x, int y,
     image->data[index + 2] = (color.b * ALPHA + db * (255 - ALPHA)) / 255;
     return;
 }
-double cprimim_mse(const cprimim_Image *restrict image1,
-                   const cprimim_Image *restrict image2) {
+double mse(const Image *restrict image1,
+                   const Image *restrict image2) {
     assert(image1->rows == image2->rows);
     assert(image1->columns == image2->columns);
     int N = image1->columns * image1->rows * 3;
@@ -50,7 +50,7 @@ double cprimim_mse(const cprimim_Image *restrict image1,
     }
     return (double)result / (double)N;
 }
-cprimim_Color cprimim_avg_color(const cprimim_Image *image) {
+Color avg_color(const Image *image) {
     double sum[] = {0, 0, 0};
     size_t n = image->rows * image->columns * 3;
     for (size_t k = 0; k < n; k++) {
@@ -61,9 +61,9 @@ cprimim_Color cprimim_avg_color(const cprimim_Image *image) {
         sum[k] += 0.5;
         sum[k] = floor(sum[k]);
     }
-    return (cprimim_Color){sum[0], sum[1], sum[2]};
+    return (Color){sum[0], sum[1], sum[2]};
 }
-void cprimim_set_background(cprimim_Image *image, const cprimim_Color *color) {
+void set_background(Image *image, const Color *color) {
     size_t n = image->rows * image->columns * 3;
     for (size_t k = 0; k < n; k += 3) {
         image->data[k] = color->r;
@@ -71,22 +71,22 @@ void cprimim_set_background(cprimim_Image *image, const cprimim_Color *color) {
         image->data[k + 2] = color->b;
     }
 }
-void cprimim_set_image(const cprimim_Image *input, cprimim_Image *output) {
+void set_image(const Image *input, Image *output) {
     assert(input->columns == output->columns && input->rows == output->rows);
     memcpy(output->data, input->data, input->rows * input->columns * 3);
 }
-void cprimim_average_color_callback(cprimim_Image *restrict image, int x, int y,
-                                    void *restrict data) {
-
-    assert(x >= 0 && y >= 0 && x < image->columns && y < image->rows);
-    cprimim_AvgColor *final_color = data;
-    size_t index = y * image->columns * CHANNELS + x * CHANNELS;
-    final_color->r += image->data[index];
-    final_color->g += image->data[index + 1];
-    final_color->b += image->data[index + 2];
-    final_color->count++;
-}
-void update_grid_errors(cprimim_OptState *state, const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int columns, int rows, int regions){
+// void average_color_callback(Image *restrict image, int x, int y,
+//                                     void *restrict data) {
+//
+//     assert(x >= 0 && y >= 0 && x < image->columns && y < image->rows);
+//     AvgColor *final_color = data;
+//     size_t index = y * image->columns * CHANNELS + x * CHANNELS;
+//     final_color->r += image->data[index];
+//     final_color->g += image->data[index + 1];
+//     final_color->b += image->data[index + 2];
+//     final_color->count++;
+// }
+void update_grid_errors(OptState *state, const Image *restrict  first, const Image *restrict second, int columns, int rows, int regions){
    int Gx = (int)floor(sqrt((double)regions * (double)columns / (double)rows));
     if (Gx < 1) Gx = 1;
     int Gy = (regions + Gx - 1) / Gx;
@@ -112,7 +112,7 @@ void update_grid_errors(cprimim_OptState *state, const cprimim_Image *restrict  
 
 
 }
-int sample_grid(cprimim_OptState* state, int regions){
+int sample_grid(OptState* state, int regions){
     uint64_t total = state->cdf[regions-1];
     if(total == 0){
 
@@ -126,7 +126,7 @@ int sample_grid(cprimim_OptState* state, int regions){
     }
     return regions-1;
 }
-static uint64_t rectangle_error(const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int x1, int x2, int y1, int y2){
+static uint64_t rectangle_error(const Image *restrict  first, const Image *restrict second, int x1, int x2, int y1, int y2){
     const int columns = first->columns;
     const uint8_t *restrict a = first->data;
     const uint8_t *restrict b = second->data;
@@ -160,13 +160,13 @@ void print_svg_header(FILE* file, int width, int height){
             <title>Approximated image</title>\n\
             <desc>File createt using cprimim.</desc>\n", width, height);
 }
-void print_svg_background(FILE *file, int width, int height, cprimim_Color color){
+void print_svg_background(FILE *file, int width, int height, Color color){
     fprintf(file, "<rect x=\"0\" y=\"0\" width=\"%i\" height=\"%i\" fill=\"rgb(%u,%u,%u)\" />", width, height, color.r, color.g, color.b);
 }
 int to_svg(cprimim_Context *context, FILE * file){
     print_svg_header(file, context->columns, context->rows);
     print_svg_background(file, context->columns, context->rows, context->state.background_color);
-    cprimim_shape * shapes = context->state.shapes;
+    shape * shapes = context->state.shapes;
     for (int k=0; k<context->nr_shapes; k++) {
         switch (shapes[k].s) {
             case BEZIER:

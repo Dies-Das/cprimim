@@ -6,6 +6,7 @@ add_library(cprimim-lib
     triangle.c
     utils.c
     point.c
+    third_party/inih/ini.c
 )
 
 
@@ -15,9 +16,10 @@ target_include_directories(cprimim-lib
   PRIVATE
 
     ${CMAKE_SOURCE_DIR}/src/processing/internal
+    ${CMAKE_SOURCE_DIR}/src/processing/third_party
 )
-target_link_libraries(cprimim-lib
-   PRIVATE OpenMP::OpenMP_C)
+# target_link_libraries(cprimim-lib
+#    PRIVATE OpenMP::OpenMP_C)
 
 set_target_properties(cprimim-lib PROPERTIES
   POSITION_INDEPENDENT_CODE ON

@@ -5,15 +5,15 @@
 #define CHANNELS 3
 #define A 128
 #include "color.h"
-typedef struct cprimim_OptState cprimim_OptState;
+typedef struct OptState OptState;
 typedef struct {
         unsigned char *data;
         int columns;
         int rows;
-} cprimim_Image;
+} Image;
 typedef struct {
         int64_t improvement;
-        cprimim_Image *other;
+        Image *other;
         int64_t sum_diffs[3];
         int64_t sum_diffs_squared[3];
         int64_t error_old;
@@ -22,26 +22,26 @@ typedef struct {
         int counter;
         int iter;
         int stride;
-} cprimim_Comparator;
+} Comparator;
 typedef struct {
-        cprimim_Image *output;
-        cprimim_Color *color;
-} cprimim_DrawData;
-cprimim_Image cprimim_copy_image(const cprimim_Image *input);
-void cprimim_set_image(const cprimim_Image *input, cprimim_Image *output);
-// void cprimim_draw_pixel(cprimim_Image *image, int x, int y,
-                        // cprimim_Color color);
-// double cprimim_mse(const cprimim_Image *image1, const cprimim_Image *image2);
-int sample_grid(cprimim_OptState* state, int regions);
-void update_grid_errors(cprimim_OptState *state, const cprimim_Image *restrict  first, const cprimim_Image *restrict second, int columns, int rows, int regions);
-cprimim_Color cprimim_avg_color(const cprimim_Image *image);
-void cprimim_set_background(cprimim_Image *image, const cprimim_Color *color);
-void cprimim_average_color_callback(cprimim_Image *image, int x, int y,
+        Image *output;
+        Color *color;
+} DrawData;
+Image copy_image(const Image *input);
+void set_image(const Image *input, Image *output);
+// void draw_pixel(Image *image, int x, int y,
+                        // Color color);
+// double mse(const Image *image1, const Image *image2);
+int sample_grid(OptState* state, int regions);
+void update_grid_errors(OptState *state, const Image *restrict  first, const Image *restrict second, int columns, int rows, int regions);
+Color avg_color(const Image *image);
+void set_background(Image *image, const Color *color);
+void average_color_callback(Image *image, int x, int y,
                                     void *data);
-static inline void cprimim_draw_pixel_callback(cprimim_Image *restrict image, int x, int y,
+static inline void draw_pixel_callback(Image *restrict image, int x, int y,
                                  void *restrict data) {
-    cprimim_DrawData *restrict drawdata = data;
-    cprimim_Color *restrict color = drawdata->color;
+    DrawData *restrict drawdata = data;
+    Color *restrict color = drawdata->color;
     size_t index = CHANNELS * (y * image->columns + x);
     drawdata->output->data[index] =
         ((int)color->r + (int)drawdata->output->data[index]) / 2;
@@ -50,14 +50,14 @@ static inline void cprimim_draw_pixel_callback(cprimim_Image *restrict image, in
     drawdata->output->data[index + 2] =
         ((int)color->b + (int)drawdata->output->data[index + 2]) / 2;
 }
-static inline void cprimim_compare_pixel_callback(cprimim_Image *restrict image, int x, int y,
+static inline void compare_pixel_callback(Image *restrict image, int x, int y,
                                     void *restrict data) {
-    cprimim_Comparator *restrict comparator = data;
+    Comparator *restrict comparator = data;
     comparator->iter++;
     if(comparator->iter%comparator->stride!=0){
         return;
     }
-    cprimim_Image *restrict output = comparator->other;
+    Image *restrict output = comparator->other;
     size_t index = CHANNELS * (y * output->columns + x);
     int old_r = image->data[index];
     int old_g = image->data[index + 1];
@@ -90,5 +90,5 @@ static inline uint64_t total_grid_error(uint64_t *grid_errors, size_t nr_initial
     return result;
 }
 
-// int to_svg(cprimim_Context *context, FILE * file);
+// int to_svg(Context *context, FILE * file);
 #endif // !IMAGE_INTERNAL_H

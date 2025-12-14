@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-bool not_valid_bezier(cprimim_bezier *input) {
+bool not_valid_bezier(bezier *input) {
     bool valid = 0;
     int dx01 = abs(input->points[0].x - input->points[1].x);
     int dx02 = abs(input->points[0].x - input->points[2].x);
@@ -28,17 +28,17 @@ bool not_valid_bezier(cprimim_bezier *input) {
     valid = (d02 <= d12 || d02 <= d01);
     return valid;
 }
-void mutate_bezier(cprimim_bezier *input, int columns, int rows) {
+void mutate_bezier(bezier *input, int columns, int rows) {
     do {
 
         uint64_t random_value = fast_rand();
         uint64_t index = random_value % 3;
-        cprimim_mutate_point(&input->points[index], columns, rows,
+        mutate_point(&input->points[index], columns, rows,
                              MUTATION_DISTANCE);
     } while (not_valid_bezier(input));
 }
 
-static cprimim_bezier random_bezier(int seed_index, int n_init,
+static bezier random_bezier(int seed_index, int n_init,
                                                int columns, int rows) {
 
    int Gx = (int)floor(sqrt((double)n_init * (double)columns / (double)rows));
@@ -53,18 +53,18 @@ static cprimim_bezier random_bezier(int seed_index, int n_init,
 
     if (cell_w < 1) cell_w = 1;
     if (cell_h < 1) cell_h = 1;
-    cprimim_bezier bz = {0};
+    bezier bz = {0};
 
     do {
-        int x0 = cell_x * cell_w + cprimim_uniform_distribution(0, cell_w);
-        int y0 = cell_y * cell_h + cprimim_uniform_distribution(0, cell_h);
+        int x0 = cell_x * cell_w + uniform_distribution(0, cell_w);
+        int y0 = cell_y * cell_h + uniform_distribution(0, cell_h);
         bz.points[0].x = x0;
         bz.points[0].y = y0;
         bz.points[1] = bz.points[0];
-        cprimim_mutate_point_uniform(&bz.points[1], columns, rows,
+        mutate_point_uniform(&bz.points[1], columns, rows,
                                      MUTATION_DISTANCE);
         bz.points[2] = bz.points[0];
-        cprimim_mutate_point_uniform(&bz.points[2], columns, rows,
+        mutate_point_uniform(&bz.points[2], columns, rows,
                                      MUTATION_DISTANCE);
     } while (not_valid_bezier(&bz));
     // mutate_bezier(&bz, columns, rows);
@@ -73,7 +73,7 @@ static cprimim_bezier random_bezier(int seed_index, int n_init,
 
 // Courtesy to http://members.chello.at/%7Eeasyfilter/Bresenham.pdf
 #define LINE_SEG(FUNC_NAME, CALLBACK)                                          \
-    static void FUNC_NAME(cprimim_Image *image, void *payload, int x0, int y0, \
+    static void FUNC_NAME(Image *image, void *payload, int x0, int y0, \
                           int x1, int y1) {                                    \
         int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;                          \
         int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;                         \
@@ -99,7 +99,7 @@ static cprimim_bezier random_bezier(int seed_index, int n_init,
     }
 #define BEZIER_SEG(FUNC_NAME, CALLBACK)                                        \
     static void FUNC_NAME(                                                     \
-        cprimim_Image *image, void *payload, int x0, int y0, int x1, int y1,   \
+        Image *image, void *payload, int x0, int y0, int x1, int y1,   \
         int x2, int y2) { /* plot a limited quadratic bezier segment */        \
         int sx = x2 - x1, sy = y2 - y1;                                        \
         long xx = x0 - x1, yy = y0 - y1, xy; /* relative values for checks */  \
@@ -160,7 +160,7 @@ static cprimim_bezier random_bezier(int seed_index, int n_init,
     LINE_SEG(FUNC_NAME##_seg_line, CALLBACK)                                   \
     BEZIER_SEG(FUNC_NAME##_seg, CALLBACK)                                      \
     static void FUNC_NAME(                                                     \
-        cprimim_Image *image, cprimim_bezier *bezier,                          \
+        Image *image, bezier *bezier,                          \
         void *payload) { /* plot any quadratic bezier curve */                 \
         int x0 = bezier->points[0].x;                                          \
         int x1 = bezier->points[1].x;                                          \
@@ -214,17 +214,17 @@ static cprimim_bezier random_bezier(int seed_index, int n_init,
         FUNC_NAME##_seg(image, payload, x0, y0, x1, y1, x2,                    \
                         y2); /* remaining part */                              \
     }
-BEZIER_PIXEL_ITERATOR(improvement, cprimim_compare_pixel_callback)
-BEZIER_PIXEL_ITERATOR(draw, cprimim_draw_pixel_callback)
+BEZIER_PIXEL_ITERATOR(improvement, compare_pixel_callback)
+BEZIER_PIXEL_ITERATOR(draw, draw_pixel_callback)
 
-void cprimim_draw_bezier(cprimim_Image *image, cprimim_bezier *bezier,
-                         cprimim_Color color) {
-    cprimim_DrawData data = {0};
+void draw_bezier(Image *image, bezier *bezier,
+                         Color color) {
+    DrawData data = {0};
     data.color = &color;
     data.output = image;
     draw(image, bezier, &data);
 }
-static inline void clamp_bezier(cprimim_bezier *bz, int columns, int rows) {
+static inline void clamp_bezier(bezier *bz, int columns, int rows) {
     for (int i = 0; i < 3; i++) {
         if (bz->points[i].x < 0)
             bz->points[i].x = 0;
@@ -243,7 +243,7 @@ SORT(bezier)
 SHAPE_APPROX(bezier)
 
 
-void write_bezier_svg(FILE * file, cprimim_bezier* bezier){
+void write_bezier_svg(FILE * file, bezier* bezier){
     fprintf(file, "<path d=\"M ");
     fprintf(file, "%i %i Q", bezier->points[0].x,bezier->points[0].y);
     for(int k=1; k<3; k++) fprintf(file, " %i %i", bezier->points[k].x,bezier->points[k].y);

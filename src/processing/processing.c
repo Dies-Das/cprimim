@@ -11,7 +11,7 @@
 #include <time.h>
 #include <string.h>
 
-cprimim_Context *cprimim_create_context(cprimim_ShapeType s, size_t nr_shapes,
+cprimim_Context *cprimim_create_context(ShapeType s, size_t nr_shapes,
                                        size_t candidates, size_t initial_shapes,
                                        size_t attempts,
                                        int columns, int rows) {
@@ -21,13 +21,13 @@ cprimim_Context *cprimim_create_context(cprimim_ShapeType s, size_t nr_shapes,
     size_t shape_size = 0;
     switch (s) {
     case LINE:
-        shape_size = sizeof(cprimim_line);
+        shape_size = sizeof(line);
         break;
     case BEZIER:
-        shape_size = sizeof(cprimim_bezier);
+        shape_size = sizeof(bezier);
         break;
     case TRIANGLE:
-        shape_size = sizeof(cprimim_triangle);
+        shape_size = sizeof(triangle);
         break;
     case RECTANGLE:
         break;
@@ -46,7 +46,7 @@ cprimim_Context *cprimim_create_context(cprimim_ShapeType s, size_t nr_shapes,
     ctx->nr_shapes = nr_shapes;
     ctx->attempts = attempts;
     ctx->s = s;
-    ctx->state.shapes = malloc(sizeof(cprimim_shape) * nr_shapes);
+    ctx->state.shapes = malloc(sizeof(shape) * nr_shapes);
     ctx->state.grid_errors = malloc(sizeof(size_t)*initial_shapes);
     ctx->state.cdf = malloc(sizeof(size_t)*initial_shapes);
     ctx->output.data = malloc(columns * rows * 3);
@@ -65,16 +65,19 @@ void cprimim_destroy_context(cprimim_Context *context) {
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer) {
     context->input.data = buffer;
 }
-cprimim_Image *cprimim_approximate(cprimim_Context *context) {
+Image *cprimim_approximate(cprimim_Context *context) {
+    Color avg = avg_color(&context->input);\
+    context->state.background_color = avg;\
+    set_background(&context->output, &avg);\
     switch (context->s) {
     case LINE:
-        cprimim_line_approx(context);
+        line_approx(context);
         break;
     case BEZIER:
-        cprimim_bezier_approx(context);
+        bezier_approx(context);
         break;
     case TRIANGLE:
-        cprimim_triangle_approx(context);
+        triangle_approx(context);
         break;
     default:
         break;
@@ -84,6 +87,6 @@ cprimim_Image *cprimim_approximate(cprimim_Context *context) {
 }
 
 
-uint8_t *cprimim_image_data(const cprimim_Image *image){
+uint8_t *cprimim_image_data(const Image *image){
     return image->data;
 }

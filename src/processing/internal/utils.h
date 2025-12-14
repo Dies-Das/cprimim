@@ -9,13 +9,13 @@
 #define A 128
 extern _Thread_local uint64_t rng_state;
 void utils_srand(uint64_t seed);
-static inline int cprimim_sign(int x) {
+static inline int sign(int x) {
     if (x < 0) {
         return -1;
     }
     return 1;
 }
-static inline int cprimim_max(int x, int y) {
+static inline int max(int x, int y) {
     if (x > y) {
         return x;
     }
@@ -39,17 +39,17 @@ static inline uint32_t fast_rand_range_mul(uint32_t N) {
     return (uint32_t)(prod >> 32);
 }
 
-static inline int cprimim_uniform_distribution(int lower, int upper) {
+static inline int uniform_distribution(int lower, int upper) {
     uint32_t range = (uint32_t)(upper - lower);
     int result = fast_rand_range_mul(range);
     return (int)(result + lower);
 }
-static inline int cprimim_clamp(int val, int lower, int upper) {
+static inline int clamp(int val, int lower, int upper) {
     if (val<lower) return lower;
     if (val>upper) return upper;
     return val;
 }
-static inline uint64_t cprimim_now_ns(void) {
+static inline uint64_t now_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
@@ -83,10 +83,10 @@ typedef struct {
 
     
     uint64_t mut_hist[64]; 
-} cprimim_Profiler;
-#define TBEGIN(var) uint64_t var = cprimim_now_ns()
-#define TACCUM(dst, var) do { (dst) += (cprimim_now_ns() - (var)); } while (0)
-static void cprimim_print_profile(const cprimim_Profiler *p)
+} Profiler;
+#define TBEGIN(var) uint64_t var = now_ns()
+#define TACCUM(dst, var) do { (dst) += (now_ns() - (var)); } while (0)
+static void print_profile(const Profiler *p)
 {
     double total_ms  = p->approx_ns  / 1e6;
     double grid_ms   = p->grid_ns    / 1e6;
@@ -157,7 +157,7 @@ static void cprimim_print_profile(const cprimim_Profiler *p)
 
     fprintf(stderr, "========================\n");
 }
-// static void cprimim_print_profile(const cprimim_Profiler *p) {
+// static void print_profile(const Profiler *p) {
 //     double total_ms  = p->approx_ns  / 1e6;
 //     double grid_ms   = p->grid_ns    / 1e6;
 //     double best_ms   = p->bestfit_ns / 1e6;

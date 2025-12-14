@@ -6,11 +6,5 @@ typedef struct {
         uint8_t r;
         uint8_t g;
         uint8_t b;
-} cprimim_Color;
-typedef struct {
-        size_t r;
-        size_t g;
-        size_t b;
-        int count;
-} cprimim_AvgColor;
+} Color;
 #endif // !COLOR_H
