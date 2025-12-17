@@ -2,6 +2,7 @@
 #define IMAGE_INTERNAL_H
 #include <stdint.h>
 #include "utils.h"
+#include <assert.h>
 #define CHANNELS 3
 #define A 128
 #include "color.h"
@@ -27,19 +28,20 @@ typedef struct {
         Image *output;
         Color *color;
 } DrawData;
-Image copy_image(const Image *input);
-void set_image(const Image *input, Image *output);
+Image cprimim_copy_image(const Image *input);
+void cprimim_set_image(const Image *input, Image *output);
 // void draw_pixel(Image *image, int x, int y,
                         // Color color);
 // double mse(const Image *image1, const Image *image2);
-int sample_grid(OptState* state, int regions);
-void update_grid_errors(OptState *state, const Image *restrict  first, const Image *restrict second, int columns, int rows, int regions);
-Color avg_color(const Image *image);
-void set_background(Image *image, const Color *color);
-void average_color_callback(Image *image, int x, int y,
+int cprimim_sample_grid(OptState* state, int regions);
+void cprimim_update_grid_errors(OptState *state, const Image *restrict  first, const Image *restrict second, int columns, int rows, int regions);
+Color cprimim_avg_color(const Image *image);
+void cprimim_set_background(Image *image, const Color *color);
+void cprimim_average_color_callback(Image *image, int x, int y,
                                     void *data);
 static inline void draw_pixel_callback(Image *restrict image, int x, int y,
                                  void *restrict data) {
+    assert(x>=0 && y>=0 && x<image->columns && y<image->rows);
     DrawData *restrict drawdata = data;
     Color *restrict color = drawdata->color;
     size_t index = CHANNELS * (y * image->columns + x);
@@ -52,6 +54,7 @@ static inline void draw_pixel_callback(Image *restrict image, int x, int y,
 }
 static inline void compare_pixel_callback(Image *restrict image, int x, int y,
                                     void *restrict data) {
+    assert(x>=0 && y>=0 && x<image->columns && y<image->rows);
     Comparator *restrict comparator = data;
     comparator->iter++;
     if(comparator->iter%comparator->stride!=0){

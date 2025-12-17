@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
-#define MUTATION_DISTANCE 40
 #define ALPHA 128
 #define A 128
 extern _Thread_local uint64_t rng_state;
@@ -44,6 +43,8 @@ static inline int uniform_distribution(int lower, int upper) {
     int result = fast_rand_range_mul(range);
     return (int)(result + lower);
 }
+
+#define CLAMP(val, lower, upper) val = val<lower ? lower: val>upper? upper:val
 static inline int clamp(int val, int lower, int upper) {
     if (val<lower) return lower;
     if (val>upper) return upper;

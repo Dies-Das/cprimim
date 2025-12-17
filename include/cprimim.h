@@ -15,5 +15,5 @@ void cprimim_destroy_context(cprimim_Context *context);
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer);
 cprimim_Image *cprimim_approximate(cprimim_Context *context);
 uint8_t *cprimim_image_data(const cprimim_Image *);
-int to_svg(cprimim_Context *context, FILE * file);
+int cprimim_to_svg(cprimim_Context *context, FILE * file);
 #endif // !CPRIMIM_H

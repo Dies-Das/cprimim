@@ -1,10 +1,12 @@
 #ifndef OPTIMIZE_H
 #define OPTIMIZE_H
 
+#define MUTATION_MIN 2
 
 // This is the optimizer macro. For a shape one needs to implement drawing and mutating.
+#include "utils.h"
 #define SHAPE_APPROX(TYPE)\
-void TYPE##_approx(cprimim_Context *context) {\
+void cprimim_##TYPE##_approx(cprimim_Context *context) {\
     Image *input = &context->input;\
     Image *output = &context->output;\
     size_t number_of_lines = context->nr_shapes;\
@@ -25,14 +27,15 @@ void TYPE##_approx(cprimim_Context *context) {\
     double rel_thresh = 0.05;\
     int64_t start_improvement = 0;\
     int64_t best_improvement = 0;\
-    update_grid_errors(&context->state, input, output, columns, rows, initial_shapes);\
+    cprimim_update_grid_errors(&context->state, input, output, columns, rows, initial_shapes);\
     total_grid_err = total_grid_error(context->state.grid_errors, initial_shapes);\
     {\
         utils_srand(time(NULL) * 0x9E3779B97F4A7C15ULL);\
-        for (int k = 0; k < number_of_lines; k++) {\
+        for (int k = 0; k < number_of_lines; ) {\
+                double mutation_radius = columns*.2;\
                 TBEGIN(tg);\
                 if(!rejected && rel_drop >= rel_thresh){\
-                    update_grid_errors(&context->state, input, output, columns, rows, initial_shapes);\
+                    cprimim_update_grid_errors(&context->state, input, output, columns, rows, initial_shapes);\
                     total_grid_err = total_grid_error(context->state.grid_errors, initial_shapes);\
                     reduced_since_grid = 0;\
                     rel_drop = 0;\
@@ -49,10 +52,9 @@ void TYPE##_approx(cprimim_Context *context) {\
                 old_candidate_shape.improvement_coarse = INT_MAX;\
                 context->state.prof.bestfit_calls++;\
                 candidate_shape = pick_best_initial_##TYPE(&context->state,\
-                    input, output, columns, rows, initial_shapes);\
+                    input, output, columns, rows, initial_shapes, (int)mutation_radius);\
                 if(candidate_shape.improvement>=0){\
                     rejected = true;\
-                    k--;\
                     continue;\
                 }\
                 old_candidate_shape = candidate_shape;\
@@ -60,19 +62,24 @@ void TYPE##_approx(cprimim_Context *context) {\
                 context->state.prof.sum_start_improvement += candidate_shape.improvement;\
                 size_t number_of_tries = 0;\
                 while (number_of_tries < max_number_of_tries) {\
+                    CLAMP(mutation_radius, MUTATION_MIN, 0.5*columns);\
                     context->state.prof.mutations_total++;\
                     tries_shape++;\
                     tries_per_shape++;\
                     mutate_##TYPE(&candidate_shape, input->columns,\
-                                  input->rows);\
+                                  input->rows, (int)mutation_radius);\
                     /*TBEGIN(tb);*/\
                     TBEGIN(tb);\
-                    best_fit(input, output, &candidate_shape, 4);\
+                     best_fit(input, output, &candidate_shape, COARSE_STRIDE);\
                         /*TACCUM(context->state.prof.bestfit_ns, tb);*/\
                     if (candidate_shape.improvement_coarse >=\
                         old_candidate_shape.improvement_coarse) {\
                         candidate_shape = old_candidate_shape;\
                         number_of_tries++;\
+                        mutation_radius *= 1;\
+                        /*if(mutation_radius = MUTATION_MIN) number_of_tries++;\
+                        else number_of_tries=0;\
+                        /* mutation_radius = clamp(mutation_radius, 10, .5*columns);\
                         /*context->state.prof.mutations_rejected++;*/\
                     \
                     }\
@@ -84,15 +91,20 @@ void TYPE##_approx(cprimim_Context *context) {\
                         candidate_shape = old_candidate_shape;\
                         number_of_tries++;\
                         context->state.prof.mutations_rejected++;\
+                        mutation_radius *= 1;\
+                        /*mutation_radius = clamp(mutation_radius, 10, .5*columns);/**/\
                     \
                     }\
                         else {\
                         context->state.prof.mutations_accepted++;\
                         old_candidate_shape = candidate_shape;\
                         number_of_tries = 0;\
+                        mutation_radius *= 1;\
+                        /*mutation_radius = clamp(mutation_radius, 10, .5*columns);/**/\
                     }\
                     }\
                     TACCUM(context->state.prof.bestfit_ns, tb);\
+                    /* if(mutation_radius == MUTATION_MIN) break;*/\
                 }\
                 best_improvement = candidate_shape.improvement;\
                 context->state.prof.sum_best_improvement += candidate_shape.improvement;\
@@ -107,6 +119,7 @@ void TYPE##_approx(cprimim_Context *context) {\
                 draw_##TYPE(output, &candidate_shape, candidate_shape.color);\
                 TACCUM(context->state.prof.draw_ns, td);\
                 context->state.prof.shapes_done++;\
+                k++; \
         }\
     }\
     TACCUM(context->state.prof.approx_ns, t_total);\
@@ -114,7 +127,7 @@ void TYPE##_approx(cprimim_Context *context) {\
     return;\
 }
 #define SORT(SHAPE)\
-void sort_##SHAPE(SHAPE *shapes, int n) {\
+static inline void sort_##SHAPE(SHAPE *shapes, int n) {\
     for (int i = 1; i < n; i++) {\
         SHAPE key = shapes[i];\
         int j = i - 1;\
@@ -126,14 +139,14 @@ void sort_##SHAPE(SHAPE *shapes, int n) {\
     }\
 }
 #define BEST_FIT(TYPE)\
-static void best_fit(Image *image, Image *output,\
+static inline void best_fit(Image *image, Image *output,\
                       TYPE *shape, int stride) {\
     Comparator comparator = {0};\
     comparator.max_error = INT64_MAX;\
     comparator.other = output;\
     comparator.stride = stride;\
     improvement(image, shape, &comparator);\
-    if (comparator.counter == 0) {\
+    if (stride > 1 && comparator.counter <32) {\
         shape->improvement_coarse = 0; \
     return;\
     }\
@@ -161,15 +174,15 @@ static void best_fit(Image *image, Image *output,\
 #define BEST_INITIAL(TYPE)\
 static inline TYPE pick_best_initial_##TYPE(OptState* state, Image *orig,\
                                                Image *curr, int columns,\
-                                               int rows, int n_init) {\
+                                               int rows, int n_init, int mutation_radius) {\
 \
     TYPE best = {0};\
     TYPE cand = {0};\
     best.improvement = INT64_MAX;\
     for(int k=0; k<8; k++){\
-        int index = sample_grid(state, n_init);\
+        int index = cprimim_sample_grid(state, n_init);\
         cand =\
-            random_##TYPE(index, n_init, columns, rows);\
+            random_##TYPE(index, n_init, columns, rows, mutation_radius);\
         best_fit(orig, curr, &cand, 1);\
         if(cand.improvement < best.improvement) best=cand;\
     }\

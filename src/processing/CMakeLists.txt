@@ -5,7 +5,6 @@ add_library(cprimim-lib
     line.c
     triangle.c
     utils.c
-    point.c
     third_party/inih/ini.c
 )
 
