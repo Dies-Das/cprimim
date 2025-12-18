@@ -1,8 +1,10 @@
+#include "background.h"
 #include "bezier.h"
 #include "cprimim_internal.h"
 #include "image_internal.h"
 #include "line.h"
 #include "triangle.h"
+#include "triangulation.h"
 #include "utils.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -11,9 +13,9 @@
 #include <string.h>
 #include <time.h>
 
-cprimim_Context *cprimim_create_context(ShapeType s, size_t nr_shapes, size_t candidates,
-                                        size_t initial_shapes, size_t attempts, int columns,
-                                        int rows)
+cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, size_t nr_shapes,
+                                        size_t initial_cells, size_t attempts, int columns,
+                                        int rows, size_t background_shapes)
 {
     cprimim_Context *ctx = malloc(sizeof *ctx);
     if (!ctx)
@@ -22,16 +24,20 @@ cprimim_Context *cprimim_create_context(ShapeType s, size_t nr_shapes, size_t ca
     size_t shape_size = 0;
     // utils_srand(time(NULL));
 
+    ctx->bt = b;
     ctx->rows = rows;
     ctx->columns = columns;
-    ctx->candidates = candidates;
-    ctx->initial_shapes = initial_shapes;
+    ctx->initial_cells = initial_cells;
     ctx->nr_shapes = nr_shapes;
     ctx->attempts = attempts;
+    ctx->background_shapes = background_shapes;
     ctx->s = s;
     ctx->state.shapes = malloc(sizeof(shape) * nr_shapes);
-    ctx->state.grid_errors = malloc(sizeof(size_t) * initial_shapes);
-    ctx->state.cdf = malloc(sizeof(size_t) * initial_shapes);
+    ctx->state.grid_errors = malloc(sizeof(size_t) * initial_cells);
+    ctx->state.cdf = malloc(sizeof(size_t) * initial_cells);
+    if(ctx->bt == UNIFORM_TRIANGULATION){
+        ctx->state.background.triag.triangles = malloc(sizeof(triangle)*background_shapes);
+    }
     ctx->output.data = malloc(columns * rows * 3);
     ctx->output.rows = rows;
     ctx->output.columns = columns;
@@ -53,8 +59,23 @@ void cprimim_set_input(cprimim_Context *context, uint8_t *buffer)
 Image *cprimim_approximate(cprimim_Context *context)
 {
     Color avg = cprimim_avg_color(&context->input);
-    context->state.background_color = avg;
+    context->state.background.average = avg;
     cprimim_set_background(&context->output, &avg);
+    switch (context->bt)
+    {
+    case NONE:
+    {
+    }
+    break;
+    case UNIFORM_TRIANGULATION:
+        cprimim_set_triangulation(context);
+        break;
+    case DELAUNAY:
+
+        break;
+    default:
+        break;
+    }
     switch (context->s)
     {
     case LINE:

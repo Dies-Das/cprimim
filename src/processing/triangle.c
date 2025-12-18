@@ -115,7 +115,7 @@ static int get_determinant(Point2i point1, Point2i point2, Point2i point3)
 //     }\
 // }
 #define TRIANGLE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)                                               \
-    static void FUNC_NAME(Image *image, triangle *triangle, void *payload)                         \
+    void FUNC_NAME(Image *image, triangle *triangle, void *payload)                         \
     {                                                                                              \
         Point2i p[3] = {triangle->points[0], triangle->points[1], triangle->points[2]};            \
         /* Sort by y */                                                                            \
@@ -220,20 +220,21 @@ static triangle random_triangle(int seed_index, int n_init, int columns, int row
 }
 TRIANGLE_PIXEL_ITERATOR(improvement, compare_pixel_callback)
 TRIANGLE_PIXEL_ITERATOR(draw, draw_pixel_callback)
-static void draw_triangle(Image *image, triangle *triangle, Color color)
+void cprimim_draw_triangle(Image *image, triangle *triangle, Color color)
 {
     DrawData data = {0};
     data.color = &color;
     data.output = image;
     draw(image, triangle, &data);
 }
+#define draw_triangle cprimim_draw_triangle 
 SORT(triangle)
 
 BEST_FIT(triangle)
 
 BEST_INITIAL(triangle)
 
-#define COARSE_STRIDE 4
+#define COARSE_STRIDE 2
 SHAPE_APPROX(triangle)
 
 void cprimim_write_triangle_svg(FILE *file, triangle *triangle)

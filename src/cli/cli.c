@@ -17,17 +17,13 @@ void usage(FILE *stream)
 int main(int argc, char *argv[])
 {
     bool *help = flag_bool("help", false, "Print this help to stdout and exit with 0");
-    uint64_t *thickness = flag_uint64("thickness", 3,
-                                      "Thickness of line for lines and bezier curves. Only "
-                                      "comparatively thin lines are supported right now.");
-    uint64_t *width = flag_uint64("width", 500,
-                                  "Width of the image during processing. Full HD is not "
-                                  "necessary and hinders performance.");
+    uint64_t *size = flag_uint64("size", 500,
+                                 "Minimum dimension of the image during processing. Full HD is not "
+                                 "necessary and hinders performance.");
     uint64_t *nr_of_shapes =
         flag_uint64("n", 300, "Number of shapes to draw. For lines, a good number is around 2000.");
-    uint64_t *nr_of_candidates = flag_uint64("c", 3, "Number of candidate shapes to consider.");
-    uint64_t *nr_of_initial = flag_uint64(
-        "initial", 1000, "Number of starting shapes to consider for an optimization run");
+    uint64_t *nr_of_initial =
+        flag_uint64("cells", 1000, "Number of grid cells for starting shape sampling");
     uint64_t *nr_of_tries = flag_uint64("tries", 5,
                                         "Will stop hill climbing if there was no improvement after "
                                         "trying -tries times");
@@ -35,8 +31,12 @@ int main(int argc, char *argv[])
     uint64_t *method =
         flag_uint64("method", 0,
                     "Method to use. line (0), bezier (1) and triangle (2) are implemented so far.");
-    uint64_t *threads = flag_uint64("j", 1, "Number of threads to use.");
 
+    uint64_t *background = flag_uint64(
+        "bg", 0,
+        "Background method to use. Options are uniform background(0) and triangulation(1)");
+    uint64_t *background_shapes = flag_uint64(
+        "n_background", 100, "Only relevant for triangulation. (Upper limit of) triangles used.");
     if (!flag_parse(argc, argv))
     {
         usage(stderr);
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     {
         outfile = rest_argv[0];
     }
+    printf("bg method is %i\n", *background);
     int in_w = 0, in_h = 0, in_comp = 0;
     uint8_t *input_rgb = stbi_load(*input_path, &in_w, &in_h, &in_comp, 3);
     if (!input_rgb)
@@ -70,9 +71,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not load input file: %s\n", *input_path);
         return EXIT_FAILURE;
     }
-
-    const int proc_w = (int)(*width);
-    const int proc_h = (int)(((double)in_h / (double)in_w) * (double)proc_w);
+    int minimum_dimension = in_h > in_w ? in_w : in_h;
+    double scale = (double) *size/minimum_dimension;
+    const int proc_w = (int)(in_w*scale);
+    const int proc_h = (int)(in_h*scale);
 
     uint8_t *proc_rgb = stbir_resize_uint8_srgb(input_rgb, in_w, in_h, in_w * 3, NULL, proc_w,
                                                 proc_h, proc_w * 3, STBIR_RGB);
@@ -85,8 +87,8 @@ int main(int argc, char *argv[])
     }
 
     cprimim_Context *ctx = cprimim_create_context(
-        (enum cprimim_shape)(*method), (size_t)(*nr_of_shapes), (size_t)(*nr_of_candidates),
-        (size_t)(*nr_of_initial), (size_t)(*nr_of_tries), proc_w, proc_h);
+        (enum cprimim_shape)(*method), (cprimim_BackgroundType) *background, (size_t)(*nr_of_shapes), 
+        (size_t)(*nr_of_initial), (size_t)(*nr_of_tries), proc_w, proc_h, *background_shapes);
 
     if (!ctx)
     {

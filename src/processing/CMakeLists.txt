@@ -1,4 +1,5 @@
 add_library(cprimim-lib
+    triangulation.c
     image.c
     bezier.c
     processing.c

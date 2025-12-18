@@ -190,15 +190,33 @@ static void print_svg_header(FILE *file, int width, int height)
             <desc>File createt using cprimim.</desc>\n",
             width, height);
 }
-static void print_svg_background(FILE *file, int width, int height, Color color)
+static void print_svg_background_rectangle(FILE *file, int width, int height, Color color)
 {
     fprintf(file, "<rect x=\"0\" y=\"0\" width=\"%i\" height=\"%i\" fill=\"rgb(%u,%u,%u)\" />",
             width, height, color.r, color.g, color.b);
 }
 int cprimim_to_svg(cprimim_Context *context, FILE *file)
 {
+    Background* background = &context->state.background;
     print_svg_header(file, context->columns, context->rows);
-    print_svg_background(file, context->columns, context->rows, context->state.background_color);
+    print_svg_background_rectangle(file, context->columns, context->rows,
+                                   background->average);
+    printf("we have method %i, triangulation method is %i", context->bt, UNIFORM_TRIANGULATION);
+    switch (context->bt)
+    {
+        case NONE:
+
+        break;
+    case UNIFORM_TRIANGULATION:
+            printf("We have %u number of triangles\n", background->triag.size);
+        for (int k=0; k<background->triag.size; k++) {
+            cprimim_write_triangle_svg(file, &background->triag.triangles[k]);
+        }
+        break;
+
+    default:
+        break;
+    }
     shape *shapes = context->state.shapes;
     for (int k = 0; k < context->nr_shapes; k++)
     {
