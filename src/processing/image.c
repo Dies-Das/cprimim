@@ -197,21 +197,23 @@ static void print_svg_background_rectangle(FILE *file, int width, int height, Co
 }
 int cprimim_to_svg(cprimim_Context *context, FILE *file)
 {
-    Background* background = &context->state.background;
+    Background *background = &context->state.background;
     print_svg_header(file, context->columns, context->rows);
-    print_svg_background_rectangle(file, context->columns, context->rows,
-                                   background->average);
+    print_svg_background_rectangle(file, context->columns, context->rows, background->average);
     printf("we have method %i, triangulation method is %i", context->bt, UNIFORM_TRIANGULATION);
     switch (context->bt)
     {
-        case NONE:
+    case NONE:
 
         break;
     case UNIFORM_TRIANGULATION:
-            printf("We have %u number of triangles\n", background->triag.size);
-        for (int k=0; k<background->triag.size; k++) {
+    case DELAUNAY:
+        printf("We have %u number of triangles\n", background->triag.size);
+        for (int k = 0; k < background->triag.size; k++)
+        {
             cprimim_write_triangle_svg(file, &background->triag.triangles[k]);
         }
+
         break;
 
     default:

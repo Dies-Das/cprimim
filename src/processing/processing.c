@@ -6,6 +6,8 @@
 #include "triangle.h"
 #include "triangulation.h"
 #include "utils.h"
+#include "sample.h"
+#include "delaunay.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -37,6 +39,9 @@ cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, s
     ctx->state.cdf = malloc(sizeof(size_t) * initial_cells);
     if(ctx->bt == UNIFORM_TRIANGULATION){
         ctx->state.background.triag.triangles = malloc(sizeof(triangle)*background_shapes);
+    }
+    if(ctx->bt == DELAUNAY){
+        ctx->state.background.triag.triangles = malloc(sizeof(triangle)*background_shapes*5);
     }
     ctx->output.data = malloc(columns * rows * 3);
     ctx->output.rows = rows;
@@ -71,7 +76,7 @@ Image *cprimim_approximate(cprimim_Context *context)
         cprimim_set_triangulation(context);
         break;
     case DELAUNAY:
-
+        cprimim_delaunay_triangulation(context);
         break;
     default:
         break;

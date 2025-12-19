@@ -17,7 +17,7 @@
         int columns = input->columns;                                                              \
                                                                                                    \
         int rows = input->rows;                                                                    \
-        context->state.prof = (Profiler){0};                                                       \
+        int size = rows > columns ? columns : rows;                                                \
         TBEGIN(t_total);                                                                           \
         double tries_per_shape = 0;                                                                \
         int accepted_shapes = 0;                                                                   \
@@ -34,7 +34,7 @@
             utils_srand(time(NULL) * 0x9E3779B97F4A7C15ULL);                                       \
             for (int k = 0; k < number_of_lines;)                                                  \
             {                                                                                      \
-                double mutation_radius = columns * .2;                                             \
+                double mutation_radius = size * .1;                                                \
                 TBEGIN(tg);                                                                        \
                 if (!rejected && rel_drop >= rel_thresh)                                           \
                 {                                                                                  \
