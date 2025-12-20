@@ -75,6 +75,8 @@ static inline void sample_points(Image *image, Point2i *points, size_t number_of
 {
     int rows = image->rows;
     int columns = image->columns;
+    int n_pixels = rows * columns;
+    printf("Image: %d x %d = %d pixels\n", columns, rows, n_pixels);
     points[0] = (Point2i){0, 0};
     points[1] = (Point2i){columns - 1, 0};
     points[2] = (Point2i){0, rows - 1};
@@ -83,19 +85,40 @@ static inline void sample_points(Image *image, Point2i *points, size_t number_of
     memset(gradient, 0, sizeof(uint64_t) * columns * rows);
     uint64_t *cdf = (uint64_t *)malloc(sizeof(uint64_t) * rows * columns);
     compute_gradient(image, gradient);
+    int nonzero_top = 0, nonzero_bottom = 0;
+    for (int y = 0; y < rows / 2; y++)
+        for (int x = 0; x < columns; x++)
+            if (gradient[y * columns + x] > 0)
+                nonzero_top++;
+    for (int y = rows / 2; y < rows; y++)
+        for (int x = 0; x < columns; x++)
+            if (gradient[y * columns + x] > 0)
+                nonzero_bottom++;
+
+    printf("Nonzero gradient: top=%d, bottom=%d\n", nonzero_top, nonzero_bottom);
     cdf[0] = gradient[0];
     for (int k = 1; k < columns * rows; k++)
     {
         cdf[k] = gradient[k] + cdf[k - 1];
     }
-    int total = cdf[columns * rows - 1];
+    printf("CDF total: %lu\n", cdf[n_pixels - 1]);
+    uint64_t total = cdf[columns * rows - 1];
     for (int k = 4; k < number_of_points; k++)
     {
-        uint64_t sample = fast_rand_range_mul(total);
+        uint64_t sample = fast_rand() % (total);
         size_t index = binary_search(cdf, sample, columns * rows - 1);
         points[k].x = index % columns;
         points[k].y = index / columns;
     }
+    int points_top = 0, points_bottom = 0;
+    for (size_t k = 0; k < number_of_points; k++)
+    {
+        if (points[k].y < rows / 2)
+            points_top++;
+        else
+            points_bottom++;
+    }
+    printf("Points: top=%d, bottom=%d\n", points_top, points_bottom);
     free(gradient);
     free(cdf);
 }

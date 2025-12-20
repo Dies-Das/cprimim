@@ -55,7 +55,6 @@ DelTriangle make_triangle(Point2i p0, Point2i p1, Point2i p2)
 }
 void generate_triangulation(Point2i *points, size_t number_of_points, Triangulation *triangulation)
 {
-    printf("number of points is %lu\n", number_of_points);
     DelTriangle *triangles = (DelTriangle *)malloc(sizeof(DelTriangle) * 3 * number_of_points);
     Edge *polygon = (Edge *)malloc(sizeof(Edge) * 10*number_of_points);
     triangles[0] = make_triangle(SUPER_TRIANGLE[0], SUPER_TRIANGLE[1], SUPER_TRIANGLE[2]);
@@ -76,7 +75,6 @@ void generate_triangulation(Point2i *points, size_t number_of_points, Triangulat
                 bad_count++;
             }
         }
-        printf("Point %d: marked %zu bad triangles\n", k, bad_count);
         for (size_t j = 0; j < n_triangles; j++)
         {
             if (triangles[j].bad)
@@ -104,7 +102,6 @@ void generate_triangulation(Point2i *points, size_t number_of_points, Triangulat
             triangles[n_triangles++] =
                 make_triangle(current.points[0], current.points[1], points[k]);
         }
-        printf("Point %d: %zu boundary edges, n_triangles now %zu\n", k, n_poly_edges, n_triangles);
     }
     for (int k = 0; k < n_triangles; k++)
     {
@@ -119,7 +116,6 @@ void generate_triangulation(Point2i *points, size_t number_of_points, Triangulat
     }
     free(polygon);
     free(triangles);
-    printf("triangulation size: %lu", triangulation->size);
 }
 static inline bool inside_circumcircle(Point2i *point, DelTriangle *triangle)
 {

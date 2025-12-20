@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     double scale = (double) *size/minimum_dimension;
     const int proc_w = (int)(in_w*scale);
     const int proc_h = (int)(in_h*scale);
-
+    printf("new size is %ix%i\n", proc_w, proc_h);
     uint8_t *proc_rgb = stbir_resize_uint8_srgb(input_rgb, in_w, in_h, in_w * 3, NULL, proc_w,
                                                 proc_h, proc_w * 3, STBIR_RGB);
 

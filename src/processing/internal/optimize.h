@@ -58,7 +58,7 @@
                 candidate_shape =                                                                  \
                     pick_best_initial_##TYPE(&context->state, input, output, columns, rows,        \
                                              initial_shapes, (int)mutation_radius);                \
-                if (candidate_shape.improvement_coarse >= 0)                                       \
+                if (candidate_shape.improvement>= 0)                                       \
                 {                                                                                  \
                     rejected = true;                                                               \
                     continue;                                                                      \
@@ -193,12 +193,13 @@
         TYPE best = {0};                                                                           \
         TYPE cand = {0};                                                                           \
         best.improvement = INT64_MAX;                                                              \
+        best.improvement_coarse = INT64_MAX;                                                       \
         for (int k = 0; k < 32; k++)                                                               \
         {                                                                                          \
             int index = cprimim_sample_grid(state, n_init);                                        \
             cand = random_##TYPE(index, n_init, columns, rows, mutation_radius);                   \
-            cprimim_best_fit_##TYPE(orig, curr, &cand, 2);                                         \
-            if (cand.improvement_coarse < best.improvement_coarse)                                 \
+            cprimim_best_fit_##TYPE(orig, curr, &cand, 1);                                         \
+            if (cand.improvement< best.improvement)                                 \
                 best = cand;                                                                       \
         }                                                                                          \
         return best;                                                                               \
