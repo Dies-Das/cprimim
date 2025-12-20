@@ -82,7 +82,6 @@ static bezier random_bezier(int seed_index, int n_init, int columns, int rows, i
         int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;                                              \
         int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;                                             \
         int err = dx + dy, e2; /* error value e_xy */                                              \
-        uint64_t index = 0;                                                                        \
         for (;;)                                                                                   \
         { /* loop */                                                                               \
                                                                                                    \
@@ -111,7 +110,6 @@ static bezier random_bezier(int seed_index, int n_init, int columns, int rows, i
         int sx = x2 - x1, sy = y2 - y1;                                                            \
         long xx = x0 - x1, yy = y0 - y1, xy;      /* relative values for checks */                 \
         int dx, dy, err, cur = xx * sy - yy * sx; /* curvature */                                  \
-        uint64_t index = 0;                                                                        \
         assert(xx * sx <= 0 && yy * sy <= 0); /* sign of gradient must not change */               \
         if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy)                                     \
         { /* begin with longer part */                                                             \
@@ -252,6 +250,6 @@ void cprimim_write_bezier_svg(FILE *file, bezier *bezier)
     fprintf(file, "%i %i Q", bezier->points[0].x, bezier->points[0].y);
     for (int k = 1; k < 3; k++)
         fprintf(file, " %i %i", bezier->points[k].x, bezier->points[k].y);
-    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" fill=\"transparent\"/>",
+    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" fill=\"transparent\" stroke-linecap=\"round\" stroke-width=\"2\"/>",
             bezier->color.r, bezier->color.g, bezier->color.b);
 }

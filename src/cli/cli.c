@@ -1,5 +1,5 @@
 #include "cprimim.h"
-// #include "image.h"
+#include "video.h"
 #include "stb_image.h"
 #include "stb_image_resize2.h"
 #include "stb_image_write.h"
@@ -17,6 +17,7 @@ void usage(FILE *stream)
 int main(int argc, char *argv[])
 {
     bool *help = flag_bool("help", false, "Print this help to stdout and exit with 0");
+    bool *video = flag_bool("video", false, "Process a video file");
     uint64_t *size = flag_uint64("size", 500,
                                  "Minimum dimension of the image during processing. Full HD is not "
                                  "necessary and hinders performance.");
@@ -49,6 +50,10 @@ int main(int argc, char *argv[])
         usage(stdout);
         exit(0);
     }
+    if(*video){
+        process_video(*input_path);
+        exit(0);
+    }
     int rest_argc = flag_rest_argc();
     char **rest_argv = flag_rest_argv();
 
@@ -63,7 +68,6 @@ int main(int argc, char *argv[])
     {
         outfile = rest_argv[0];
     }
-    printf("bg method is %i\n", *background);
     int in_w = 0, in_h = 0, in_comp = 0;
     uint8_t *input_rgb = stbi_load(*input_path, &in_w, &in_h, &in_comp, 3);
     if (!input_rgb)
@@ -72,10 +76,9 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     int minimum_dimension = in_h > in_w ? in_w : in_h;
-    double scale = (double) *size/minimum_dimension;
-    const int proc_w = (int)(in_w*scale);
-    const int proc_h = (int)(in_h*scale);
-    printf("new size is %ix%i\n", proc_w, proc_h);
+    double scale = (double)*size / minimum_dimension;
+    const int proc_w = (int)(in_w * scale);
+    const int proc_h = (int)(in_h * scale);
     uint8_t *proc_rgb = stbir_resize_uint8_srgb(input_rgb, in_w, in_h, in_w * 3, NULL, proc_w,
                                                 proc_h, proc_w * 3, STBIR_RGB);
 
@@ -87,7 +90,7 @@ int main(int argc, char *argv[])
     }
 
     cprimim_Context *ctx = cprimim_create_context(
-        (enum cprimim_shape)(*method), (cprimim_BackgroundType) *background, (size_t)(*nr_of_shapes), 
+        (enum cprimim_shape)(*method), (cprimim_BackgroundType)*background, (size_t)(*nr_of_shapes),
         (size_t)(*nr_of_initial), (size_t)(*nr_of_tries), proc_w, proc_h, *background_shapes);
 
     if (!ctx)

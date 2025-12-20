@@ -45,7 +45,6 @@ double cprimim_mse(const Image *restrict image1, const Image *restrict image2)
     assert(image1->columns == image2->columns);
     int N = image1->columns * image1->rows * 3;
     uint64_t result = 0;
-#pragma omp simd reduction(+ : result)
     for (int k = 0; k < N; k++)
     {
         int diff = (int)image1->data[k] - (int)image2->data[k];
@@ -148,8 +147,6 @@ static uint64_t rectangle_error(const Image *restrict first, const Image *restri
                                 int x2, int y1, int y2)
 {
     const int columns = first->columns;
-    const uint8_t *restrict a = first->data;
-    const uint8_t *restrict b = second->data;
     size_t index = 0;
     uint64_t error = 0;
     uint64_t local_error = 0;
@@ -207,7 +204,7 @@ int cprimim_to_svg(cprimim_Context *context, FILE *file)
         break;
     case UNIFORM_TRIANGULATION:
     case DELAUNAY:
-        for (int k = 0; k < background->triag.size; k++)
+        for (size_t k = 0; k < background->triag.size; k++)
         {
             cprimim_write_triangle_svg(file, &background->triag.triangles[k]);
         }
@@ -218,7 +215,7 @@ int cprimim_to_svg(cprimim_Context *context, FILE *file)
         break;
     }
     shape *shapes = context->state.shapes;
-    for (int k = 0; k < context->nr_shapes; k++)
+    for (size_t k = 0; k < context->nr_shapes; k++)
     {
         switch (shapes[k].s)
         {

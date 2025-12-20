@@ -18,102 +18,12 @@ typedef struct
     Point2i points[2];
 } Edge;
 
-static Edge create_edge(Point2i p1, Point2i p2)
-{
-    if (p1.y > p2.y)
-    {
-        return (Edge){{p2, p1}};
-    }
-    else
-    {
-        return (Edge){{p1, p2}};
-    }
-}
-static Point2i top_left(triangle *triangle)
-{
-    int minx = INT_MAX;
-    int miny = INT_MAX;
-    for (int k = 0; k < 3; k++)
-    {
-        if (triangle->points[k].y < miny)
-        {
-            miny = triangle->points[k].y;
-        }
-        if (triangle->points[k].x < minx)
-        {
-            minx = triangle->points[k].x;
-        }
-    }
-    return (Point2i){minx, miny};
-}
-static Point2i bottom_right(triangle *triangle)
-{
-    int maxx = INT_MIN;
-    int maxy = INT_MIN;
-    for (int k = 0; k < 3; k++)
-    {
-        if (triangle->points[k].y > maxy)
-        {
-            maxy = triangle->points[k].y;
-        }
-        if (triangle->points[k].x > maxx)
-        {
-            maxx = triangle->points[k].x;
-        }
-    }
-    return (Point2i){maxx, maxy};
-}
 static int get_determinant(Point2i point1, Point2i point2, Point2i point3)
 {
     Point2i ab = {point2.x - point1.x, point2.y - point1.y};
     Point2i ac = {point3.x - point1.x, point3.y - point1.y};
     return ab.y * ac.x - ab.x * ac.y;
 }
-// #define TRIANGLE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)\
-// static void FUNC_NAME(Image *image, triangle *triangle, \
-//                                   void *payload) {\
-//     Edge edges[3];\
-//     for(int k=0; k<3; k++){\
-//         edges[k] = create_edge(triangle->points[k], triangle->points[(k+1)%3]);\
-// }\
-//     Point2i bounding_box[2] = {top_left(triangle), bottom_right(triangle)};\
-//     Point2i p0 = triangle->points[0];\
-//     Point2i p1 = triangle->points[1];\
-//     Point2i p2 = triangle->points[2];\
-//     int edge_distances[3] = {0};\
-//     edge_distances[0] = get_determinant(p1, p2, bounding_box[0]);\
-//     edge_distances[1] = get_determinant(p2, p0, bounding_box[0]);\
-//     edge_distances[2] = get_determinant(p0, p1, bounding_box[0]);\
-// \
-//     int dwdx[3] = {0};\
-//     dwdx[0] = p1.y-p2.y;\
-//     dwdx[1] = p2.y-p0.y;\
-//     dwdx[2] = p0.y-p1.y;\
-//     int dwdy[3] = {0};\
-//     dwdy[0] = p1.x-p2.x;\
-//     dwdy[1] = p2.x-p0.x;\
-//     dwdy[2] = p0.x-p1.x;\
-//     int w[3] = {0};\
-//     int stop_early = 0;\
-//     \
-//     for(int y=bounding_box[0].y; y<=bounding_box[1].y; y++){\
-//         for (int k=0; k<3; k++){\
-//             w[k] = edge_distances[k];\
-//         }\
-//         for(int x=bounding_box[0].x; x<=bounding_box[1].x; x++){\
-//             if((w[0]|w[1]|w[2])>=0){\
-//                 (CALLBACK(image, x,y, payload)) ;\
-//             }\
-//             for (int k=0; k<3; k++){\
-//                 w[k] -= dwdx[k];\
-//             }\
-//         }\
-//         for (int k=0; k<3; k++){\
-//             edge_distances[k] += dwdy[k];\
-//         }\
-// \
-//     }\
-// }
 #define TRIANGLE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)                                               \
     void FUNC_NAME(Image *image, triangle *triangle, void *payload)                         \
     {                                                                                              \

@@ -36,10 +36,10 @@ static inline int64_t cross2d(Point2i a, Point2i b, Point2i c)
 void cprimim_delaunay_triangulation(cprimim_Context *ctx)
 {
     Point2i *points = malloc(sizeof(Point2i) * ctx->background_shapes);
-    sample_points(&ctx->input, points, ctx->background_shapes);
-    generate_triangulation(points, ctx->background_shapes, &ctx->state.background.triag);
+    size_t total_points = sample_points(&ctx->input, points, ctx->background_shapes);
+    generate_triangulation(points, total_points, &ctx->state.background.triag);
     Triangulation* triangles = &ctx->state.background.triag;
-    for(int k=0; k<triangles->size; k++){
+    for(size_t k=0; k<triangles->size; k++){
         cprimim_best_fit_triangle(&ctx->input, &ctx->output, &triangles->triangles[k], 1);
         cprimim_draw_triangle(&ctx->output, &triangles->triangles[k], triangles->triangles[k].color);
     }
@@ -59,11 +59,10 @@ void generate_triangulation(Point2i *points, size_t number_of_points, Triangulat
     Edge *polygon = (Edge *)malloc(sizeof(Edge) * 10*number_of_points);
     triangles[0] = make_triangle(SUPER_TRIANGLE[0], SUPER_TRIANGLE[1], SUPER_TRIANGLE[2]);
     size_t n_triangles = 1;
-    for (int k = 0; k < number_of_points; k++)
+    for (size_t k = 0; k < number_of_points; k++)
     {
 
         size_t n_poly_edges = 0;
-        size_t bad_count = 0;
         for (size_t j = 0; j < n_triangles; j++)
         {
             if (triangles[j].bad)
@@ -72,7 +71,6 @@ void generate_triangulation(Point2i *points, size_t number_of_points, Triangulat
             if (inside_circumcircle(&points[k], &triangles[j]))
             {
                 triangles[j].bad = true;
-                bad_count++;
             }
         }
         for (size_t j = 0; j < n_triangles; j++)
@@ -103,7 +101,7 @@ void generate_triangulation(Point2i *points, size_t number_of_points, Triangulat
                 make_triangle(current.points[0], current.points[1], points[k]);
         }
     }
-    for (int k = 0; k < n_triangles; k++)
+    for (size_t k = 0; k < n_triangles; k++)
     {
         if (!triangles[k].bad && !has_super(&triangles[k]))
         {
@@ -165,7 +163,7 @@ static inline bool not_in_bad_triangles(DelTriangle *triangles, size_t current_t
 }
 static inline Edge get_edge(DelTriangle *triangle, size_t index)
 {
-    return (Edge){triangle->points[index], triangle->points[(index + 1) % 3]};
+    return (Edge){.points ={triangle->points[index], triangle->points[(index + 1) % 3]}};
 }
 
 static inline bool has_super(DelTriangle *triangle)

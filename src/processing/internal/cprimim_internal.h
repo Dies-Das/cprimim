@@ -13,7 +13,6 @@ typedef struct OptState{
     uint64_t * cdf;
     size_t offset;
     Background background;
-    Profiler prof;
 
 } OptState ;
 typedef struct {

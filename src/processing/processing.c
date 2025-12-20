@@ -1,13 +1,13 @@
 #include "background.h"
 #include "bezier.h"
 #include "cprimim_internal.h"
+#include "delaunay.h"
 #include "image_internal.h"
 #include "line.h"
+#include "sample.h"
 #include "triangle.h"
 #include "triangulation.h"
 #include "utils.h"
-#include "sample.h"
-#include "delaunay.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -23,9 +23,8 @@ cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, s
     if (!ctx)
         return NULL;
     memset(ctx, 0, sizeof *ctx);
-    size_t shape_size = 0;
-    // utils_srand(time(NULL));
 
+    utils_srand(time(NULL) * 0x9E3779B97F4A7C15ULL);
     ctx->bt = b;
     ctx->rows = rows;
     ctx->columns = columns;
@@ -37,11 +36,13 @@ cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, s
     ctx->state.shapes = malloc(sizeof(shape) * nr_shapes);
     ctx->state.grid_errors = malloc(sizeof(size_t) * initial_cells);
     ctx->state.cdf = malloc(sizeof(size_t) * initial_cells);
-    if(ctx->bt == UNIFORM_TRIANGULATION){
-        ctx->state.background.triag.triangles = malloc(sizeof(triangle)*background_shapes);
+    if (ctx->bt == UNIFORM_TRIANGULATION)
+    {
+        ctx->state.background.triag.triangles = malloc(sizeof(triangle) * background_shapes);
     }
-    if(ctx->bt == DELAUNAY){
-        ctx->state.background.triag.triangles = malloc(sizeof(triangle)*background_shapes*5);
+    if (ctx->bt == DELAUNAY)
+    {
+        ctx->state.background.triag.triangles = malloc(sizeof(triangle) * background_shapes * 5);
     }
     ctx->output.data = malloc(columns * rows * 3);
     ctx->output.rows = rows;

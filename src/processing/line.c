@@ -23,9 +23,7 @@
         int y1 = line->points[1].y;                                                                \
         int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;                                              \
         int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;                                              \
-        int err = dx - dy, e2, x2, y2;                                                             \
-        int ed = dx + dy == 0 ? 1 : (dx * dx + dy * dy);                                           \
-        size_t idx;                                                                                \
+        int err = dx - dy ;                                                             \
                                                                                                    \
         int half = (line->thickness + 1) / 2;                                                      \
                                                                                                    \
@@ -127,6 +125,6 @@ void cprimim_write_line_svg(FILE *file, line *line)
 {
     fprintf(file, "<line x1=\"%i\" x2=\"%i\" y1=\"%i\" y2=\"%i\"", line->points[0].x,
             line->points[1].x, line->points[0].y, line->points[1].y);
-    fprintf(file, " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" stroke-width=\"%i\"/>",
+    fprintf(file, " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" stroke-width=\"%i\" stroke-linecap=\"round\"/>",
             line->color.r, line->color.g, line->color.b, line->thickness);
 }

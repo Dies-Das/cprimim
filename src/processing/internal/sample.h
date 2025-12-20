@@ -1,18 +1,22 @@
 #ifndef SAMPLE_H
 #define SAMPLE_H
-
+// #define UPDATE
 #include "background.h"
 #include "cprimim_internal.h"
 #include "image_internal.h"
 #include "point.h"
 #include "utils.h"
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-const static int sobel_x[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
-const static int sobel_y[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
-
+static const int sobel_x[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+static const int sobel_y[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+#ifdef UPDATE
+static void update_cdf(uint64_t *gradient, uint64_t *cdf, size_t index, int columns, int rows,
+                       int min_dist);
+#endif
 static inline size_t binary_search(uint64_t *cdf, uint64_t value, size_t n)
 {
     size_t lo = 0, hi = n - 1;
@@ -71,12 +75,12 @@ static inline void compute_gradient(Image *image, uint64_t *gradient)
     }
 }
 
-static inline void sample_points(Image *image, Point2i *points, size_t number_of_points)
+static inline size_t sample_points(Image *image, Point2i *points, size_t number_of_points)
 {
     int rows = image->rows;
     int columns = image->columns;
-    int n_pixels = rows * columns;
-    printf("Image: %d x %d = %d pixels\n", columns, rows, n_pixels);
+    int min_dist = ceilf(sqrtf(columns * rows / (float)number_of_points) * .7);
+    min_dist = min_dist == 0 ? 1 : min_dist;
     points[0] = (Point2i){0, 0};
     points[1] = (Point2i){columns - 1, 0};
     points[2] = (Point2i){0, rows - 1};
@@ -85,42 +89,55 @@ static inline void sample_points(Image *image, Point2i *points, size_t number_of
     memset(gradient, 0, sizeof(uint64_t) * columns * rows);
     uint64_t *cdf = (uint64_t *)malloc(sizeof(uint64_t) * rows * columns);
     compute_gradient(image, gradient);
-    int nonzero_top = 0, nonzero_bottom = 0;
-    for (int y = 0; y < rows / 2; y++)
-        for (int x = 0; x < columns; x++)
-            if (gradient[y * columns + x] > 0)
-                nonzero_top++;
-    for (int y = rows / 2; y < rows; y++)
-        for (int x = 0; x < columns; x++)
-            if (gradient[y * columns + x] > 0)
-                nonzero_bottom++;
 
-    printf("Nonzero gradient: top=%d, bottom=%d\n", nonzero_top, nonzero_bottom);
     cdf[0] = gradient[0];
     for (int k = 1; k < columns * rows; k++)
     {
         cdf[k] = gradient[k] + cdf[k - 1];
     }
-    printf("CDF total: %lu\n", cdf[n_pixels - 1]);
     uint64_t total = cdf[columns * rows - 1];
-    for (int k = 4; k < number_of_points; k++)
+    size_t real_nr_points = 4;
+    for (size_t k = 4; k < number_of_points && cdf[columns * rows - 1] > 0; k++)
     {
         uint64_t sample = fast_rand() % (total);
         size_t index = binary_search(cdf, sample, columns * rows - 1);
         points[k].x = index % columns;
         points[k].y = index / columns;
+#ifdef UPDATE
+        update_cdf(gradient, cdf, index, columns, rows, min_dist);
+#endif
+        real_nr_points++;
     }
-    int points_top = 0, points_bottom = 0;
-    for (size_t k = 0; k < number_of_points; k++)
-    {
-        if (points[k].y < rows / 2)
-            points_top++;
-        else
-            points_bottom++;
-    }
-    printf("Points: top=%d, bottom=%d\n", points_top, points_bottom);
+
     free(gradient);
     free(cdf);
+    return real_nr_points;
 }
-
+#ifdef UPDATE
+static void update_cdf(uint64_t *gradient, uint64_t *cdf, size_t index, int columns, int rows,
+                       int min_dist)
+{
+    int x = index % columns;
+    int y = index / columns;
+    int dx = min_dist;
+    for (int ky = -dx; ky <= dx; ky++)
+    {
+        int py = y + ky;
+        if (py < 0 || py >= rows)
+            continue;
+        for (int kx = -dx; kx <= dx; kx++)
+        {
+            int px = x + kx;
+            if (px < 0 || px >= columns)
+                continue;
+            gradient[py * columns + px] = 0;
+        }
+    }
+    cdf[0] = gradient[0];
+    for (int k = 1; k < columns * rows; k++)
+    {
+        cdf[k] = gradient[k] + cdf[k - 1];
+    }
+}
+#endif
 #endif
