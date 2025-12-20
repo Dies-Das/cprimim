@@ -1,11 +1,12 @@
 add_library(cprimim-lib
+    triangulation.c
     image.c
     bezier.c
     processing.c
     line.c
     triangle.c
+    delaunay.c
     utils.c
-    point.c
     third_party/inih/ini.c
 )
 
