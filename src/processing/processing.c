@@ -45,7 +45,7 @@ cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, s
     {
         ctx->state.background.triag.triangles = malloc(sizeof(triangle) * background_shapes * 5);
     }
-    ctx->output.data = malloc(columns * rows * 3);
+    ctx->output.data = malloc(columns * rows * CHANNELS);
     ctx->output.rows = rows;
     ctx->output.columns = columns;
     ctx->input.rows = rows;

@@ -38,7 +38,7 @@ static inline int pixel_gray(Image *image, int x, int y)
 {
     size_t idx = CHANNELS * (y * image->columns + x);
     int result = 0;
-    for (int k = 0; k < CHANNELS; k++)
+    for (int k = 0; k < 3; k++)
     {
         result += image->data[idx + k];
     }

@@ -9,7 +9,7 @@
 int process_image(Args args){
 
     int in_w = 0, in_h = 0, in_comp = 0;
-    uint8_t *input_rgb = stbi_load(*args.input_path, &in_w, &in_h, &in_comp, 3);
+    uint8_t *input_rgb = stbi_load(*args.input_path, &in_w, &in_h, &in_comp, 4);
     if (!input_rgb)
     {
         fprintf(stderr, "Could not load input file: %s\n", *args.input_path);
@@ -19,8 +19,8 @@ int process_image(Args args){
     double scale = (double)*args.size / minimum_dimension;
     const int proc_w = (int)(in_w * scale);
     const int proc_h = (int)(in_h * scale);
-    uint8_t *proc_rgb = stbir_resize_uint8_srgb(input_rgb, in_w, in_h, in_w * 3, NULL, proc_w,
-                                                proc_h, proc_w * 3, STBIR_RGB);
+    uint8_t *proc_rgb = stbir_resize_uint8_srgb(input_rgb, in_w, in_h, in_w * 4, NULL, proc_w,
+                                                proc_h, proc_w * 4, STBIR_RGBA);
 
     if (!proc_rgb)
     {

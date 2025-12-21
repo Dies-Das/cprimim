@@ -5,7 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#define CHANNELS 3
+#define CHANNELS 4
+#define CHANNELS_COLOR 3
 #include "color.h"
 typedef struct OptState OptState;
 typedef struct

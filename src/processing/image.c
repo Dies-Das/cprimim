@@ -18,7 +18,7 @@ static uint64_t rectangle_error(const Image *restrict first, const Image *restri
 Image cprimim_copy_image(const Image *input)
 {
     Image output = {0};
-    long size = input->rows * input->columns * 3;
+    long size = input->rows * input->columns * CHANNELS;
     output.data = malloc(size);
     if (output.data == NULL)
     {
