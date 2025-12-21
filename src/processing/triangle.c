@@ -147,13 +147,13 @@ BEST_INITIAL(triangle)
 #define COARSE_STRIDE 2
 SHAPE_APPROX(triangle)
 
-void cprimim_write_triangle_svg(FILE *file, triangle *triangle)
+void cprimim_write_triangle_svg(FILE *file, triangle *triangle, double alpha)
 {
     fprintf(file, "<polygon points=\"");
     for (int k = 0; k < 3; k++)
     {
         fprintf(file, "%i %i ", triangle->points[k].x, triangle->points[k].y);
     }
-    fprintf(file, "\" fill=\"rgb(%u,%u,%u)\" opacity=\"0.5\"/>", triangle->color.r,
-            triangle->color.g, triangle->color.b);
+    fprintf(file, "\" fill=\"rgb(%u,%u,%u)\" opacity=\"%f\"/>", triangle->color.r,
+            triangle->color.g, triangle->color.b, alpha);
 }

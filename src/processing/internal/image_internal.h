@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #define CHANNELS 3
-#define A 128
 #include "color.h"
 typedef struct OptState OptState;
 typedef struct
@@ -26,11 +26,13 @@ typedef struct
     int counter;
     int iter;
     int stride;
+    uint8_t alpha;
 } Comparator;
 typedef struct
 {
     Image *output;
     Color *color;
+    uint8_t alpha;
 } DrawData;
 Image cprimim_copy_image(const Image *input);
 void cprimim_set_image(const Image *input, Image *output);
@@ -48,17 +50,21 @@ static inline void draw_pixel_callback(Image *restrict image, int x, int y, void
     assert(x >= 0 && y >= 0 && x < image->columns && y < image->rows);
     DrawData *restrict drawdata = data;
     Color *restrict color = drawdata->color;
+    uint8_t alpha = color->alpha;
     size_t index = CHANNELS * (y * image->columns + x);
-    drawdata->output->data[index] = ((int)color->r + (int)drawdata->output->data[index]) / 2;
+    drawdata->output->data[index] =
+        ((int)color->r * alpha + (int)drawdata->output->data[index] * (256 - alpha)) >> 8;
     drawdata->output->data[index + 1] =
-        ((int)color->g + (int)drawdata->output->data[index + 1]) / 2;
+        ((int)color->g * alpha + (int)drawdata->output->data[index + 1] * (256 - alpha)) >> 8;
     drawdata->output->data[index + 2] =
-        ((int)color->b + (int)drawdata->output->data[index + 2]) / 2;
+        ((int)color->b * alpha + (int)drawdata->output->data[index + 2] * (256 - alpha)) >> 8;
 }
 static inline void compare_pixel_callback(Image *restrict image, int x, int y, void *restrict data)
 {
     assert(x >= 0 && y >= 0 && x < image->columns && y < image->rows);
     Comparator *restrict comparator = data;
+    uint8_t alpha = comparator->alpha;
+
     comparator->iter++;
     if (comparator->iter % comparator->stride != 0)
     {
@@ -72,13 +78,13 @@ static inline void compare_pixel_callback(Image *restrict image, int x, int y, v
     int new_r = output->data[index];
     int new_g = output->data[index + 1];
     int new_b = output->data[index + 2];
-    int64_t diff = -old_r * 255 + (255 - A) * new_r;
+    int64_t diff = (int64_t)old_r * 256 - (256 - alpha) * new_r;
     comparator->sum_diffs[0] += diff;
     comparator->sum_diffs_squared[0] += diff * diff;
-    diff = -old_g * 255 + (255 - A) * new_g;
+    diff = (int64_t)old_g * 256 - (256 - alpha) * new_g;
     comparator->sum_diffs[1] += diff;
     comparator->sum_diffs_squared[1] += diff * diff;
-    diff = -old_b * 255 + (255 - A) * new_b;
+    diff = (int64_t)old_b * 256 - (256 - alpha) * new_b;
     comparator->sum_diffs[2] += diff;
     comparator->sum_diffs_squared[2] += diff * diff;
     comparator->counter++;

@@ -30,15 +30,16 @@ Image cprimim_copy_image(const Image *input)
     memcpy(output.data, input->data, size);
     return output;
 }
-void draw_pixel(Image *image, int x, int y, Color color)
-{
-    int index = y * image->columns * CHANNELS + CHANNELS * x;
-    unsigned dr = image->data[index], dg = image->data[index + 1], db = image->data[index + 2];
-    image->data[index] = (color.r * ALPHA + dr * (255 - ALPHA)) / 255;
-    image->data[index + 1] = (color.g * ALPHA + dg * (255 - ALPHA)) / 255;
-    image->data[index + 2] = (color.b * ALPHA + db * (255 - ALPHA)) / 255;
-    return;
-}
+#define ALPHA 128
+// void draw_pixel(Image *image, int x, int y, Color color)
+// {
+//     int index = y * image->columns * CHANNELS + CHANNELS * x;
+//     unsigned dr = image->data[index], dg = image->data[index + 1], db = image->data[index + 2];
+//     image->data[index] = (color.r * ALPHA + dr * (255 - ALPHA)) / 255;
+//     image->data[index + 1] = (color.g * ALPHA + dg * (255 - ALPHA)) / 255;
+//     image->data[index + 2] = (color.b * ALPHA + db * (255 - ALPHA)) / 255;
+//     return;
+// }
 double cprimim_mse(const Image *restrict image1, const Image *restrict image2)
 {
     assert(image1->rows == image2->rows);
@@ -206,7 +207,7 @@ int cprimim_to_svg(cprimim_Context *context, FILE *file)
     case DELAUNAY:
         for (size_t k = 0; k < background->triag.size; k++)
         {
-            cprimim_write_triangle_svg(file, &background->triag.triangles[k]);
+            cprimim_write_triangle_svg(file, &background->triag.triangles[k], 1.0);
         }
 
         break;
@@ -215,18 +216,19 @@ int cprimim_to_svg(cprimim_Context *context, FILE *file)
         break;
     }
     shape *shapes = context->state.shapes;
+    double alpha = ((double)context->alpha)/255;
     for (size_t k = 0; k < context->nr_shapes; k++)
     {
         switch (shapes[k].s)
         {
         case BEZIER:
-            cprimim_write_bezier_svg(file, &shapes[k].shape.bezier);
+            cprimim_write_bezier_svg(file, &shapes[k].shape.bezier, alpha);
             break;
         case LINE:
-            cprimim_write_line_svg(file, &shapes[k].shape.line);
+            cprimim_write_line_svg(file, &shapes[k].shape.line, alpha);
             break;
         case TRIANGLE:
-            cprimim_write_triangle_svg(file, &shapes[k].shape.triangle);
+            cprimim_write_triangle_svg(file, &shapes[k].shape.triangle, alpha);
             break;
         default:
             break;

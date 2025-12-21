@@ -88,7 +88,7 @@ void cprimim_refine_triangulation(cprimim_Context* ctx, Triangulation* heap, siz
             {.points = {m12, m01, m02}}
         };
         for(int k=0; k<4; k++){
-            cprimim_best_fit_triangle(&ctx->input, &ctx->output, &children[k], 1); 
+            cprimim_best_fit_triangle(&ctx->input, &ctx->output, &children[k], 1, 255); 
             heap_push(heap, children[k]);
         }
     }
@@ -101,8 +101,8 @@ void cprimim_set_triangulation(cprimim_Context *ctx){
     Point2i corners[4] = {{0,0}, {0,rows-1}, {columns-1,0}, {columns-1, rows-1}};
     triangle first = {{corners[0], corners[1], corners[3]},0, 0, 0, {0}};
     triangle second = {{corners[0], corners[2], corners[3]},0, 0, 0, {0}};
-    cprimim_best_fit_triangle(&ctx->input, &ctx->output, &first, 1); 
-    cprimim_best_fit_triangle(&ctx->input, &ctx->output, &second, 1); 
+    cprimim_best_fit_triangle(&ctx->input, &ctx->output, &first, 1, 255); 
+    cprimim_best_fit_triangle(&ctx->input, &ctx->output, &second, 1, 255); 
     heap_push(triangles, first);
     heap_push(triangles, second);
     cprimim_refine_triangulation(ctx, triangles, ctx->background_shapes);

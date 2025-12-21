@@ -1,6 +1,7 @@
 add_executable(cprimim
     cli.c
-    video.c
+    video_cli.c
+    image_cli.c
     flag_impl.c
     stb_impl.c
 )
@@ -23,6 +24,8 @@ target_link_libraries(cprimim
     avcodec
     avformat
     avutil
+    swscale
+
 )
 set_target_properties(cprimim PROPERTIES
   COMPILE_FLAGS "${CMAKE_C_FLAGS_PROFILE}"

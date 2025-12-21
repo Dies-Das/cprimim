@@ -5,5 +5,5 @@
 #include "cprimim_internal.h"
 void cprimim_line_approx(cprimim_Context * context);
 
-void cprimim_write_line_svg(FILE * file, line* line);
+void cprimim_write_line_svg(FILE * file, line* line, double alpha);
 #endif // !LINE_H

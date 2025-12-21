@@ -121,10 +121,10 @@ static void mutate_line(line *line, int columns, int rows, int mutation_radius)
 
 #define COARSE_STRIDE 2
 SHAPE_APPROX(line)
-void cprimim_write_line_svg(FILE *file, line *line)
+void cprimim_write_line_svg(FILE *file, line *line, double alpha)
 {
     fprintf(file, "<line x1=\"%i\" x2=\"%i\" y1=\"%i\" y2=\"%i\"", line->points[0].x,
             line->points[1].x, line->points[0].y, line->points[1].y);
-    fprintf(file, " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" stroke-width=\"%i\" stroke-linecap=\"round\"/>",
-            line->color.r, line->color.g, line->color.b, line->thickness);
+    fprintf(file, " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"%f\" stroke-width=\"%i\" stroke-linecap=\"round\"/>",
+            line->color.r, line->color.g, line->color.b, alpha, line->thickness);
 }

@@ -1,20 +1,28 @@
-#include "video.h"
+#include "video_cli.h"
 #include "cprimim.h"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 // print out the steps and errors
 static void logging(const char *fmt, ...);
 // decode packets into frames
-static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame);
+static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame,
+                         Args *args);
 // save a frame into a .pgm file
-static void save_gray_frame(unsigned char *buf, int wrap, int xsize, int ysize, char *filename);
-int process_video(char *filepath)
+static void save_cprimim_frame(unsigned char *buf, int xsize, int ysize, Args *args);
+int process_video(Args args)
 {
+    if (!args.output_path)
+    {
+        args.output_path = "out.svg";
+    }
     AVFormatContext *pFormatContext = avformat_alloc_context();
 
-    if (avformat_open_input(&pFormatContext, filepath, NULL, NULL))
+    if (avformat_open_input(&pFormatContext, *args.input_path, NULL, NULL))
     {
         return EXIT_FAILURE;
     }
@@ -74,7 +82,7 @@ int process_video(char *filepath)
     }
     if (video_stream_index == -1)
     {
-        logging("File %s does not contain a video stream!", filepath);
+        logging("File %s does not contain a video stream!", *args.input_path);
         return -1;
     }
 
@@ -116,10 +124,8 @@ int process_video(char *filepath)
         logging("failed to allocate memory for AVPacket");
         return -1;
     }
-
     int response = 0;
-    int how_many_packets_to_process = 8;
-
+    int nr_frame = 0;
     // fill the Packet with data from the Stream
     // https://ffmpeg.org/doxygen/trunk/group__lavf__decoding.html#ga4fdb3084415a82e3810de6ee60e46a61
     while (av_read_frame(pFormatContext, pPacket) >= 0)
@@ -128,12 +134,13 @@ int process_video(char *filepath)
         if (pPacket->stream_index == video_stream_index)
         {
             logging("AVPacket->pts %" PRId64, pPacket->pts);
-            response = decode_packet(pPacket, pCodecContext, pFrame);
+            response = decode_packet(pPacket, pCodecContext, pFrame, &args);
             if (response < 0)
                 break;
-            // stop it, otherwise we'll be saving hundreds of frames
-            if (--how_many_packets_to_process <= 0)
+            if (nr_frame > 8)
                 break;
+            // stop it, otherwise we'll be saving hundreds of frames
+            nr_frame++;
         }
         // https://ffmpeg.org/doxygen/trunk/group__lavc__packet.html#ga63d5a489b419bd5d45cfd09091cbcbc2
         av_packet_unref(pPacket);
@@ -157,11 +164,9 @@ static void logging(const char *fmt, ...)
     va_end(args);
     fprintf(stderr, "\n");
 }
-
-static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame)
+static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame,
+                         Args *args)
 {
-    // Supply raw packet data as input to a decoder
-    // https://ffmpeg.org/doxygen/trunk/group__lavc__decoding.html#ga58bc4bf1e0ac59e27362597e467efff3
     int response = avcodec_send_packet(pCodecContext, pPacket);
 
     if (response < 0)
@@ -172,8 +177,6 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
 
     while (response >= 0)
     {
-        // Return decoded output data (into a frame) from a decoder
-        // https://ffmpeg.org/doxygen/trunk/group__lavc__decoding.html#ga11e6542c4e66d3028668788a1a74217c
         response = avcodec_receive_frame(pCodecContext, pFrame);
         if (response == AVERROR(EAGAIN) || response == AVERROR_EOF)
         {
@@ -187,36 +190,64 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
 
         if (response >= 0)
         {
+            printf("Color range: %d (1=MPEG/limited, 2=JPEG/full)\n", pFrame->color_range);
+            printf("Color space: %d\n", pFrame->colorspace);
+            struct SwsContext *sws = NULL;
+            sws = sws_getCachedContext(sws, pFrame->width, pFrame->height, pFrame->format,
+                                       pFrame->width, pFrame->height, AV_PIX_FMT_RGB24,
+                                       SWS_BILINEAR | SWS_FULL_CHR_H_INT | SWS_ACCURATE_RND, NULL,
+                                       NULL, NULL);
+            const int *coeffs = sws_getCoefficients(SWS_CS_ITU601);
+            sws_setColorspaceDetails(sws, coeffs, 0, // src: limited range
+                                     coeffs, 1,      // dst: full range
+                                     0, 1 << 16, 1 << 16);
+            uint8_t *rgb_data[4] = {NULL};
+            int rgb_linesize[4] = {0};
 
-            char frame_filename[1024] = "asdf.pgm";
-            // Check if the frame is a planar YUV 4:2:0, 12bpp
-            // That is the format of the provided .mp4 file
-            // RGB formats will definitely not give a gray image
-            // Other YUV image may do so, but untested, so give a warning
+            int ret = av_image_alloc(rgb_data, rgb_linesize, pFrame->width, pFrame->height,
+                                     AV_PIX_FMT_RGB24, 1);
+            if (ret < 0)
+            {
+                logging("Failed to allocate RGB buffer");
+                sws_freeContext(sws);
+                return -1;
+            }
+
+            sws_scale(sws, (const uint8_t *const *)pFrame->data, pFrame->linesize, 0,
+                      pFrame->height, rgb_data, rgb_linesize);
+            static int frame_num = 0;
+            char fname[64];
+            snprintf(fname, sizeof(fname), "debug_%03d.ppm", frame_num++);
+            FILE *f = fopen(fname, "wb");
+            fprintf(f, "P6\n%d %d\n255\n", pFrame->width, pFrame->height);
+            fwrite(rgb_data[0], 1, pFrame->width * pFrame->height * 3, f);
+            fclose(f);
             if (pFrame->format != AV_PIX_FMT_YUV420P)
             {
                 logging("Warning: the generated file may not be a grayscale image, but could e.g. "
                         "be just the R component if the video format is RGB");
             }
-            // save a grayscale frame into a .pgm file
-            save_gray_frame(pFrame->data[0], pFrame->linesize[0], pFrame->width, pFrame->height,
-                            frame_filename);
+            printf("width: %d, expected stride: %d, actual linesize: %d\n", pFrame->width,
+                   pFrame->width * 3, rgb_linesize[0]);
+            save_cprimim_frame(rgb_data[0], pFrame->width, pFrame->height, args);
+
+            av_freep(&rgb_data[0]);
+            sws_freeContext(sws);
         }
     }
     return 0;
 }
 
-static void save_gray_frame(unsigned char *buf, int wrap, int xsize, int ysize, char *filename)
+static void save_cprimim_frame(unsigned char *buf, int xsize, int ysize, Args *args)
 {
-    FILE *f;
-    int i;
-    f = fopen(filename, "w");
-    // writing the minimal required header for a pgm file format
-    // portable graymap format -> https://en.wikipedia.org/wiki/Netpbm_format#PGM_example
-    fprintf(f, "P5\n%d %d\n%d\n", xsize, ysize, 255);
-
-    // writing line by line
-    for (i = 0; i < ysize; i++)
-        fwrite(buf + i * wrap, 1, xsize, f);
-    fclose(f);
+    cprimim_Context *ctx = cprimim_create_context(
+        (enum cprimim_shape)(*args->method), (cprimim_BackgroundType)*args->background,
+        (size_t)(*args->nr_of_shapes), (size_t)(*args->initial_cells), (size_t)(*args->nr_of_tries),
+        xsize, ysize, *args->background_shapes, *args->alpha);
+    cprimim_set_input(ctx, buf);
+    cprimim_approximate(ctx);
+    FILE *ptr = fopen(args->output_path, "w");
+    cprimim_to_svg(ctx, ptr);
+    fclose(ptr);
+    cprimim_destroy_context(ctx);
 }

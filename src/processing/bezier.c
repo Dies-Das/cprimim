@@ -244,12 +244,12 @@ SORT(bezier)
 #define COARSE_STRIDE 2
 SHAPE_APPROX(bezier)
 
-void cprimim_write_bezier_svg(FILE *file, bezier *bezier)
+void cprimim_write_bezier_svg(FILE *file, bezier *bezier, double alpha)
 {
     fprintf(file, "<path d=\"M ");
     fprintf(file, "%i %i Q", bezier->points[0].x, bezier->points[0].y);
     for (int k = 1; k < 3; k++)
         fprintf(file, " %i %i", bezier->points[k].x, bezier->points[k].y);
-    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"0.5\" fill=\"transparent\" stroke-linecap=\"round\" stroke-width=\"2\"/>",
-            bezier->color.r, bezier->color.g, bezier->color.b);
+    fprintf(file, "\" stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"%f\" fill=\"transparent\" stroke-linecap=\"round\" stroke-width=\"2\"/>",
+            bezier->color.r, bezier->color.g, bezier->color.b, alpha);
 }

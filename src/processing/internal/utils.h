@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
-#define ALPHA 128
-#define A 128
 extern uint64_t rng_state;
 void utils_srand(uint64_t seed);
 static inline int sign(int x) {

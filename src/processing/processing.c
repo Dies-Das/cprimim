@@ -17,7 +17,7 @@
 
 cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, size_t nr_shapes,
                                         size_t initial_cells, size_t attempts, int columns,
-                                        int rows, size_t background_shapes)
+                                        int rows, size_t background_shapes, uint8_t alpha)
 {
     cprimim_Context *ctx = malloc(sizeof *ctx);
     if (!ctx)
@@ -33,6 +33,7 @@ cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, s
     ctx->attempts = attempts;
     ctx->background_shapes = background_shapes;
     ctx->s = s;
+    ctx->alpha = alpha;
     ctx->state.shapes = malloc(sizeof(shape) * nr_shapes);
     ctx->state.grid_errors = malloc(sizeof(size_t) * initial_cells);
     ctx->state.cdf = malloc(sizeof(size_t) * initial_cells);
