@@ -103,7 +103,7 @@
                 rel_drop = reduced_since_grid / (double)total_grid_err;                            \
                 shapes[k].shape.TYPE = candidate_shape;                                            \
                 shapes[k].s = context->s;                                                          \
-                draw_##TYPE(output, &candidate_shape, candidate_shape.color);                      \
+                draw_##TYPE(&context->cairo, &candidate_shape);                                    \
                 k++;                                                                               \
             }                                                                                      \
         }                                                                                          \
@@ -145,16 +145,15 @@
             return;                                                                                \
         }                                                                                          \
         int64_t denom = (int64_t)alpha * comparator.counter;                                       \
-        shape->color.r = clamp(comparator.sum_diffs[0] / denom, 0, 255);                           \
+        shape->color.b = clamp(comparator.sum_diffs[0] / denom, 0, 255);                           \
         shape->color.g = clamp(comparator.sum_diffs[1] / denom, 0, 255);                           \
-        shape->color.b = clamp(comparator.sum_diffs[2] / denom, 0, 255);                           \
+        shape->color.r = clamp(comparator.sum_diffs[2] / denom, 0, 255);                           \
         shape->color.alpha = alpha;                                                                \
         int64_t error_new =                                                                        \
-            3 * (comparator.sum_diffs_squared[0] -                                                 \
+            1 * (comparator.sum_diffs_squared[0] -                                                 \
                  comparator.sum_diffs[0] * comparator.sum_diffs[0] / comparator.counter);          \
-        error_new +=                                                                               \
-            10 * (comparator.sum_diffs_squared[1] -                                                \
-                  comparator.sum_diffs[1] * comparator.sum_diffs[1] / comparator.counter);         \
+        error_new += 1 * (comparator.sum_diffs_squared[1] -                                        \
+                          comparator.sum_diffs[1] * comparator.sum_diffs[1] / comparator.counter); \
         error_new += comparator.sum_diffs_squared[2] -                                             \
                      comparator.sum_diffs[2] * comparator.sum_diffs[2] / comparator.counter;       \
         if (stride == 1)                                                                           \

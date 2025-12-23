@@ -16,6 +16,7 @@ typedef struct
 typedef struct
 {
     Point2i points[3];
+    uint8_t thickness;
     int64_t improvement;
     int64_t residual;
     int64_t improvement_coarse;
@@ -28,6 +29,7 @@ typedef struct
     int64_t improvement;
     int64_t residual;
     int64_t improvement_coarse;
+    uint8_t thickness;
     Color color;
 } triangle;
 typedef enum

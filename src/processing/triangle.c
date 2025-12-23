@@ -1,9 +1,11 @@
 #include "triangle.h"
 #include "color.h"
+#include "cprimim_internal.h"
 #include "optimize.h"
 #include "point.h"
 #include "utils.h"
 #include <assert.h>
+#include <cairo/cairo.h>
 #include <limits.h>
 #include <math.h>
 #include <stdbool.h>
@@ -13,6 +15,24 @@
 #include <stdlib.h>
 #include <time.h>
 
+static void draw_triangle_cairo(CairoContext* cairo, triangle *trig)
+{
+    Color color = trig->color;
+    cairo_set_line_width(cairo->cr, (double)trig->thickness);
+
+    cairo_set_source_rgba(cairo->cr, u8_to_unit(color.r), u8_to_unit(color.g), u8_to_unit(color.b),
+                          u8_to_unit(color.alpha)); 
+
+    cairo_new_path(cairo->cr);
+    cairo_move_to(cairo->cr, trig->points[0].x + 0.5, trig->points[0].y + 0.5);
+    cairo_line_to(cairo->cr, trig->points[1].x + 0.5, trig->points[1].y + 0.5);
+    cairo_line_to(cairo->cr, trig->points[2].x + 0.5, trig->points[2].y + 0.5);
+    cairo_close_path(cairo->cr);
+    cairo_fill(cairo->cr);
+
+
+    cairo_surface_flush(cairo->surf);
+}
 typedef struct
 {
     Point2i points[2];
@@ -129,13 +149,13 @@ static triangle random_triangle(int seed_index, int n_init, int columns, int row
     return triangle;
 }
 TRIANGLE_PIXEL_ITERATOR(improvement, compare_pixel_callback)
-TRIANGLE_PIXEL_ITERATOR(draw, draw_pixel_callback)
-void cprimim_draw_triangle(Image *image, triangle *triangle, Color color)
+// TRIANGLE_PIXEL_ITERATOR(draw, draw_pixel_callback)
+void cprimim_draw_triangle(CairoContext* cairo, triangle *triangle)
 {
-    DrawData data = {0};
-    data.color = &color;
-    data.output = image;
-    draw(image, triangle, &data);
+    // DrawData data = {0};
+    // data.color = &color;
+    // data.output = image;
+    draw_triangle_cairo(cairo, triangle);
 }
 #define draw_triangle cprimim_draw_triangle 
 SORT(triangle)

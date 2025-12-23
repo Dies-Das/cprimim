@@ -2,11 +2,27 @@
 #include "cprimim.h"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/frame.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/pixfmt.h>
 #include <libswscale/swscale.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct
+{
+    AVFormatContext *fmt;
+    AVCodecContext *cdx;
+    cprimim_Context *ctx;
+    AVCodec *codec;
+    int vstream;
+    AVPacket * pkt;
+    AVFrame * frame;
+    struct SwsContext * sws;
+    uint8_t * output_frame[4];
+    int out_linesize[4];
+    int with, height;
+} cprimim_VideoContext;
 // print out the steps and errors
 static void logging(const char *fmt, ...);
 // decode packets into frames
@@ -20,6 +36,7 @@ int process_video(Args args)
     {
         args.output_path = "out.svg";
     }
+    cprimim_VideoContext video_context = {0};
     AVFormatContext *pFormatContext = avformat_alloc_context();
 
     if (avformat_open_input(&pFormatContext, *args.input_path, NULL, NULL))
@@ -190,11 +207,9 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
 
         if (response >= 0)
         {
-            printf("Color range: %d (1=MPEG/limited, 2=JPEG/full)\n", pFrame->color_range);
-            printf("Color space: %d\n", pFrame->colorspace);
             struct SwsContext *sws = NULL;
             sws = sws_getCachedContext(sws, pFrame->width, pFrame->height, pFrame->format,
-                                       pFrame->width, pFrame->height, AV_PIX_FMT_RGB24,
+                                       pFrame->width, pFrame->height, AV_PIX_FMT_RGBA,
                                        SWS_BILINEAR | SWS_FULL_CHR_H_INT | SWS_ACCURATE_RND, NULL,
                                        NULL, NULL);
             const int *coeffs = sws_getCoefficients(SWS_CS_ITU601);
@@ -205,7 +220,7 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
             int rgb_linesize[4] = {0};
 
             int ret = av_image_alloc(rgb_data, rgb_linesize, pFrame->width, pFrame->height,
-                                     AV_PIX_FMT_RGB24, 1);
+                                     AV_PIX_FMT_RGBA, 1);
             if (ret < 0)
             {
                 logging("Failed to allocate RGB buffer");
@@ -222,13 +237,6 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
             fprintf(f, "P6\n%d %d\n255\n", pFrame->width, pFrame->height);
             fwrite(rgb_data[0], 1, pFrame->width * pFrame->height * 3, f);
             fclose(f);
-            if (pFrame->format != AV_PIX_FMT_YUV420P)
-            {
-                logging("Warning: the generated file may not be a grayscale image, but could e.g. "
-                        "be just the R component if the video format is RGB");
-            }
-            printf("width: %d, expected stride: %d, actual linesize: %d\n", pFrame->width,
-                   pFrame->width * 3, rgb_linesize[0]);
             save_cprimim_frame(rgb_data[0], pFrame->width, pFrame->height, args);
 
             av_freep(&rgb_data[0]);

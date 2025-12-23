@@ -107,7 +107,7 @@ void cprimim_set_triangulation(cprimim_Context *ctx){
     heap_push(triangles, second);
     cprimim_refine_triangulation(ctx, triangles, ctx->background_shapes);
     for(size_t k=0; k<triangles->size; k++){
-        cprimim_draw_triangle(&ctx->output, &triangles->triangles[k], triangles->triangles[k].color);
+        cprimim_draw_triangle(&ctx->cairo, &triangles->triangles[k]);
     }
 
 }

@@ -1,12 +1,13 @@
 #include "line.h"
 #include "color.h"
+#include "cprimim_internal.h"
 #include "optimize.h"
 #include "point.h"
 #include "utils.h"
 #include <assert.h>
+#include <cairo/cairo.h>
 #include <limits.h>
 #include <math.h>
-#include <omp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -14,6 +15,24 @@
 #include <stdlib.h>
 #include <time.h>
 
+
+static void draw_line_cairo(CairoContext* cairo, line *ln)
+{
+    Color color = ln->color;
+    cairo_set_line_width(cairo->cr, (double)ln->thickness);
+
+    // Color + alpha
+    cairo_set_source_rgba(cairo->cr, u8_to_unit(color.r), u8_to_unit(color.g), u8_to_unit(color.b),
+                          u8_to_unit(color.alpha)); // if you store alpha in Color
+
+    // Pixel-center alignment can help for thin strokes:
+    // add 0.5 if you want crisper 1px-ish lines with AA off.
+    cairo_move_to(cairo->cr, ln->points[0].x + 0.5, ln->points[0].y + 0.5);
+    cairo_line_to(cairo->cr, ln->points[1].x + 0.5, ln->points[1].y + 0.5);
+    cairo_stroke(cairo->cr);
+
+    cairo_surface_flush(cairo->surf);
+}
 #define LINE_PIXEL_ITERATOR(FUNC_NAME, CALLBACK)                                                   \
     static void FUNC_NAME(Image *image, line *line, void *payload)                                 \
     {                                                                                              \
@@ -23,9 +42,10 @@
         int y1 = line->points[1].y;                                                                \
         int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;                                              \
         int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;                                              \
-        int err = dx - dy ;                                                             \
+        int err = dx - dy;                                                                         \
                                                                                                    \
-        int half = (line->thickness + 1) / 2;                                                      \
+        int start = -(line->thickness / 2);                                                              \
+        int end = start + line->thickness - 1;                                                           \
                                                                                                    \
         bool steep = (dy > dx);                                                                    \
                                                                                                    \
@@ -33,26 +53,22 @@
         {                                                                                          \
             if (steep)                                                                             \
             {                                                                                      \
-                for (int off = -half; off <= half; off++)                                          \
+                int lower = x0 + start < 0 ? 0 : x0 + start;                                       \
+                int upper = x0 + end >= image->columns ? image->columns - 1 : x0 + end;            \
+                for (int xx = lower; xx <= upper; xx++)                                            \
                 {                                                                                  \
-                    int xx = x0 + off;                                                             \
                     int yy = y0;                                                                   \
-                    if (xx >= 0 && yy >= 0 && xx < image->columns && yy < image->rows)             \
-                    {                                                                              \
-                        CALLBACK(image, xx, yy, payload);                                          \
-                    }                                                                              \
+                    CALLBACK(image, xx, yy, payload);                                              \
                 }                                                                                  \
             }                                                                                      \
             else                                                                                   \
             {                                                                                      \
-                for (int off = -half; off <= half; off++)                                          \
+                int lower = y0 + start < 0 ? 0 : y0 + start;                                       \
+                int upper = y0 + end >= image->rows ? image->rows - 1 : y0 + end;            \
+                for (int yy = lower; yy <= upper; yy++)                                            \
                 {                                                                                  \
                     int xx = x0;                                                                   \
-                    int yy = y0 + off;                                                             \
-                    if (xx >= 0 && yy >= 0 && xx < image->columns && yy < image->rows)             \
-                    {                                                                              \
-                        CALLBACK(image, xx, yy, payload);                                          \
-                    }                                                                              \
+                    CALLBACK(image, xx, yy, payload);                                              \
                 }                                                                                  \
             }                                                                                      \
                                                                                                    \
@@ -100,18 +116,19 @@ SORT(line)
 BEST_FIT(line)
 BEST_INITIAL(line)
 
-static void draw_line(Image *image, line *line, Color color)
+static void draw_line(CairoContext* cairo, line *line)
 {
-    DrawData data = {0};
-    data.color = &color;
-    data.output = image;
-    draw(image, line, &data);
+    // DrawData data = {0};
+    // data.color = &color;
+    // data.output = image;
+    // draw(image, line, &data);
+    draw_line_cairo(cairo, line);
 }
 static void mutate_line(line *line, int columns, int rows, int mutation_radius)
 {
     int index = fast_rand() & 1;
     mutate_point(&line->points[index], columns, rows, mutation_radius);
-    index = fast_rand() & 1;
+    index = fast_rand() & 5;
     if (index)
     {
         line->thickness += uniform_distribution(-1, 2);
@@ -125,6 +142,8 @@ void cprimim_write_line_svg(FILE *file, line *line, double alpha)
 {
     fprintf(file, "<line x1=\"%i\" x2=\"%i\" y1=\"%i\" y2=\"%i\"", line->points[0].x,
             line->points[1].x, line->points[0].y, line->points[1].y);
-    fprintf(file, " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"%f\" stroke-width=\"%i\" stroke-linecap=\"round\"/>",
+    fprintf(file,
+            " stroke=\"rgb(%u,%u,%u)\" stroke-opacity=\"%f\" stroke-width=\"%i\" "
+            "stroke-linecap=\"round\"/>",
             line->color.r, line->color.g, line->color.b, alpha, line->thickness);
 }

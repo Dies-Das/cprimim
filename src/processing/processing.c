@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 
+void initialize_cairo_context(cprimim_Context *context);
 cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, size_t nr_shapes,
                                         size_t initial_cells, size_t attempts, int columns,
                                         int rows, size_t background_shapes, uint8_t alpha)
@@ -50,6 +51,7 @@ cprimim_Context *cprimim_create_context(ShapeType s, cprimim_BackgroundType b, s
     ctx->output.columns = columns;
     ctx->input.rows = rows;
     ctx->input.columns = columns;
+    initialize_cairo_context(ctx);
     return ctx;
 }
 void cprimim_destroy_context(cprimim_Context *context)
@@ -104,4 +106,22 @@ Image *cprimim_approximate(cprimim_Context *context)
 uint8_t *cprimim_image_data(const Image *image)
 {
     return image->data;
+}
+void initialize_cairo_context(cprimim_Context *context)
+{
+    Image *img = &context->output;
+    CairoContext* cairo = &context->cairo;
+
+    cairo->data = img->data;
+    cairo->stride = img->columns * 4;
+
+    cairo->surf = cairo_image_surface_create_for_data(
+        cairo->data, CAIRO_FORMAT_RGB24, img->columns, img->rows, cairo->stride);
+
+    cairo->cr = cairo_create(cairo->surf);
+
+    cairo_set_antialias(cairo->cr, CAIRO_ANTIALIAS_NONE);
+    cairo_set_line_join(cairo->cr, CAIRO_LINE_JOIN_ROUND);
+    cairo_set_line_cap(cairo->cr, CAIRO_LINE_CAP_ROUND);
+    cairo_set_operator(cairo->cr, CAIRO_OPERATOR_OVER);
 }

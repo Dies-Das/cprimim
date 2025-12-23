@@ -41,7 +41,7 @@ void cprimim_delaunay_triangulation(cprimim_Context *ctx)
     Triangulation* triangles = &ctx->state.background.triag;
     for(size_t k=0; k<triangles->size; k++){
         cprimim_best_fit_triangle(&ctx->input, &ctx->output, &triangles->triangles[k], 1, 255);
-        cprimim_draw_triangle(&ctx->output, &triangles->triangles[k], triangles->triangles[k].color);
+        cprimim_draw_triangle(&ctx->cairo, &triangles->triangles[k]);
     }
     free(points);
 }

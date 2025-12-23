@@ -18,7 +18,6 @@ static inline int max(int x, int y) {
     }
     return y;
 }
-// initialize to any nonzero seed:
 
 // returns next pseudorandom uint32 in [0,2^32)
 static inline uint64_t fast_rand(void) {
@@ -49,4 +48,8 @@ static inline int clamp(int val, int lower, int upper) {
     return val;
 }
 
+static inline double u8_to_unit(uint8_t v)
+{
+    return (double)v / 255.0;
+}
 #endif // !UTILS_H

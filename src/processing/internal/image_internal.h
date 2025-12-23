@@ -54,11 +54,11 @@ static inline void draw_pixel_callback(Image *restrict image, int x, int y, void
     uint8_t alpha = color->alpha;
     size_t index = CHANNELS * (y * image->columns + x);
     drawdata->output->data[index] =
-        ((int)color->r * alpha + (int)drawdata->output->data[index] * (256 - alpha)) >> 8;
+        ((int)color->b * alpha + (int)drawdata->output->data[index] * (256 - alpha)) >> 8;
     drawdata->output->data[index + 1] =
         ((int)color->g * alpha + (int)drawdata->output->data[index + 1] * (256 - alpha)) >> 8;
     drawdata->output->data[index + 2] =
-        ((int)color->b * alpha + (int)drawdata->output->data[index + 2] * (256 - alpha)) >> 8;
+        ((int)color->r * alpha + (int)drawdata->output->data[index + 2] * (256 - alpha)) >> 8;
 }
 static inline void compare_pixel_callback(Image *restrict image, int x, int y, void *restrict data)
 {
@@ -73,26 +73,26 @@ static inline void compare_pixel_callback(Image *restrict image, int x, int y, v
     }
     Image *restrict output = comparator->other;
     size_t index = CHANNELS * (y * output->columns + x);
-    int old_r = image->data[index];
+    int old_b = image->data[index];
     int old_g = image->data[index + 1];
-    int old_b = image->data[index + 2];
-    int new_r = output->data[index];
+    int old_r = image->data[index + 2];
+    int new_b = output->data[index];
     int new_g = output->data[index + 1];
-    int new_b = output->data[index + 2];
-    int64_t diff = (int64_t)old_r * 256 - (256 - alpha) * new_r;
+    int new_r = output->data[index + 2];
+    int64_t diff = (int64_t)old_b * 256 - (256 - alpha) * new_b;
     comparator->sum_diffs[0] += diff;
     comparator->sum_diffs_squared[0] += diff * diff;
     diff = (int64_t)old_g * 256 - (256 - alpha) * new_g;
     comparator->sum_diffs[1] += diff;
     comparator->sum_diffs_squared[1] += diff * diff;
-    diff = (int64_t)old_b * 256 - (256 - alpha) * new_b;
+    diff = (int64_t)old_r * 256 - (256 - alpha) * new_r;
     comparator->sum_diffs[2] += diff;
     comparator->sum_diffs_squared[2] += diff * diff;
     comparator->counter++;
     diff = new_r - old_r;
-    comparator->error_old += 3 * diff * diff;
+    comparator->error_old += 1 * diff * diff;
     diff = new_g - old_g;
-    comparator->error_old += 10 * diff * diff;
+    comparator->error_old += 1 * diff * diff;
     diff = new_b - old_b;
     comparator->error_old += diff * diff;
 }

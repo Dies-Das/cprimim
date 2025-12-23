@@ -74,15 +74,15 @@ void cprimim_set_background(Image *image, const Color *color)
     size_t n = image->rows * image->columns * 3;
     for (size_t k = 0; k < n; k += 3)
     {
-        image->data[k] = color->r;
+        image->data[k] = color->g;
         image->data[k + 1] = color->g;
-        image->data[k + 2] = color->b;
+        image->data[k + 2] = color->r;
     }
 }
 void cprimim_set_image(const Image *input, Image *output)
 {
     assert(input->columns == output->columns && input->rows == output->rows);
-    memcpy(output->data, input->data, input->rows * input->columns * 3);
+    memcpy(output->data, input->data, input->rows * input->columns * CHANNELS);
 }
 // void average_color_callback(Image *restrict image, int x, int y,
 //                                     void *restrict data) {
