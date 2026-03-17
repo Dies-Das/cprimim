@@ -8,6 +8,7 @@
 #include "triangle.h"
 #include "triangulation.h"
 #include "utils.h"
+#include <cairo/cairo.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -60,6 +61,21 @@ void cprimim_destroy_context(cprimim_Context *context)
     free(context->state.shapes);
     free(context->state.cdf);
     free(context->state.grid_errors);
+    switch (context->bt) {
+        case UNIFORM_TRIANGULATION:
+        case DELAUNAY:
+        free(context->state.background.triag.triangles);
+        default:
+        break;
+    }
+    cairo_destroy(context->cairo.cr);
+    cairo_surface_destroy(context->cairo.surf);
+    free(context);
+}
+void cprimim_reset_context(cprimim_Context *context){
+
+    memset(context->output.data, 0, CHANNELS*context->output.rows*context->output.columns);
+    context->state.background.triag.size = 0;
 }
 void cprimim_set_input(cprimim_Context *context, uint8_t *buffer)
 {

@@ -62,39 +62,40 @@ static inline void draw_pixel_callback(Image *restrict image, int x, int y, void
 }
 static inline void compare_pixel_callback(Image *restrict image, int x, int y, void *restrict data)
 {
-    assert(x >= 0 && y >= 0 && x < image->columns && y < image->rows);
-    Comparator *restrict comparator = data;
-    uint8_t alpha = comparator->alpha;
-
-    comparator->iter++;
-    if (comparator->iter % comparator->stride != 0)
-    {
-        return;
-    }
+        Comparator *restrict comparator = data;
+    const int alpha = comparator->alpha;
+    const int inv_alpha = 256 - alpha;
+    
     Image *restrict output = comparator->other;
-    size_t index = CHANNELS * (y * output->columns + x);
-    int old_b = image->data[index];
-    int old_g = image->data[index + 1];
-    int old_r = image->data[index + 2];
-    int new_b = output->data[index];
-    int new_g = output->data[index + 1];
-    int new_r = output->data[index + 2];
-    int64_t diff = (int64_t)old_b * 256 - (256 - alpha) * new_b;
-    comparator->sum_diffs[0] += diff;
-    comparator->sum_diffs_squared[0] += diff * diff;
-    diff = (int64_t)old_g * 256 - (256 - alpha) * new_g;
-    comparator->sum_diffs[1] += diff;
-    comparator->sum_diffs_squared[1] += diff * diff;
-    diff = (int64_t)old_r * 256 - (256 - alpha) * new_r;
-    comparator->sum_diffs[2] += diff;
-    comparator->sum_diffs_squared[2] += diff * diff;
+    size_t index = (y * output->columns + x) << 2;  // * 4 via shift
+    
+    // Load once
+    int tgt_b = image->data[index];
+    int tgt_g = image->data[index + 1];
+    int tgt_r = image->data[index + 2];
+    int cur_b = output->data[index];
+    int cur_g = output->data[index + 1];
+    int cur_r = output->data[index + 2];
+    
+    // Scaled diffs for optimal color computation
+    int64_t db = (int64_t)tgt_b * 256 - inv_alpha * cur_b;
+    int64_t dg = (int64_t)tgt_g * 256 - inv_alpha * cur_g;
+    int64_t dr = (int64_t)tgt_r * 256 - inv_alpha * cur_r;
+    
+    comparator->sum_diffs[0] += db;
+    comparator->sum_diffs[1] += dg;
+    comparator->sum_diffs[2] += dr;
+    comparator->sum_diffs_squared[0] += db * db;
+    comparator->sum_diffs_squared[1] += dg * dg;
+    comparator->sum_diffs_squared[2] += dr * dr;
+    
+    // Direct error (unscaled)
+    int eb = cur_b - tgt_b;
+    int eg = cur_g - tgt_g;
+    int er = cur_r - tgt_r;
+    comparator->error_old += eb*eb + eg*eg + er*er;
+    
     comparator->counter++;
-    diff = new_r - old_r;
-    comparator->error_old += 1 * diff * diff;
-    diff = new_g - old_g;
-    comparator->error_old += 1 * diff * diff;
-    diff = new_b - old_b;
-    comparator->error_old += diff * diff;
 }
 static inline uint64_t total_grid_error(uint64_t *grid_errors, size_t nr_initial)
 {

@@ -1,9 +1,10 @@
 add_executable(cprimim
     cli.c
-    video_cli.c
+    # video_cli.c
     image_cli.c
     flag_impl.c
     stb_impl.c
+    third_party/ffmpeg_transcoding/transcoding.c
 )
 
 target_include_directories(cprimim
@@ -13,6 +14,7 @@ target_include_directories(cprimim
 	${CMAKE_SOURCE_DIR}/src/cli/third_party/stb
 
 	${CMAKE_SOURCE_DIR}/src/cli/third_party/flag
+	${CMAKE_SOURCE_DIR}/src/cli/third_party/ffmpeg_transcoding
 
 )
 

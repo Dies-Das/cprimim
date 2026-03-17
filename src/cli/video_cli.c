@@ -16,10 +16,10 @@ typedef struct
     cprimim_Context *ctx;
     AVCodec *codec;
     int vstream;
-    AVPacket * pkt;
-    AVFrame * frame;
-    struct SwsContext * sws;
-    uint8_t * output_frame[4];
+    AVPacket *pkt;
+    AVFrame *frame;
+    struct SwsContext *sws;
+    uint8_t *output_frame[4];
     int out_linesize[4];
     int with, height;
 } cprimim_VideoContext;
@@ -209,7 +209,7 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
         {
             struct SwsContext *sws = NULL;
             sws = sws_getCachedContext(sws, pFrame->width, pFrame->height, pFrame->format,
-                                       pFrame->width, pFrame->height, AV_PIX_FMT_RGBA,
+                                       pFrame->width, pFrame->height, AV_PIX_FMT_BGRA,
                                        SWS_BILINEAR | SWS_FULL_CHR_H_INT | SWS_ACCURATE_RND, NULL,
                                        NULL, NULL);
             const int *coeffs = sws_getCoefficients(SWS_CS_ITU601);
@@ -220,7 +220,7 @@ static int decode_packet(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFra
             int rgb_linesize[4] = {0};
 
             int ret = av_image_alloc(rgb_data, rgb_linesize, pFrame->width, pFrame->height,
-                                     AV_PIX_FMT_RGBA, 1);
+                                     AV_PIX_FMT_BGRA, 1);
             if (ret < 0)
             {
                 logging("Failed to allocate RGB buffer");

@@ -127,6 +127,7 @@ static bezier random_bezier(int seed_index, int n_init, int columns, int rows, i
                                                                                                    \
         while (true)                                                                               \
         {                                                                                          \
+        assert(x0>=0 && x0<image->columns && y0>=0 && y0<image->rows);     /* sign of gradient must not change */           \
             if (steep)                                                                             \
             {                                                                                      \
                 int lower = x0 + start < 0 ? 0 : x0 + start;                                       \
@@ -134,6 +135,7 @@ static bezier random_bezier(int seed_index, int n_init, int columns, int rows, i
                 for (int xx = lower; xx <= upper; xx++)                                            \
                 {                                                                                  \
                     int yy = y0;                                                                   \
+        assert(xx>=0 && xx<image->columns && yy>=0 && yy<image->rows);     /* sign of gradient must not change */           \
                     CALLBACK(image, xx, yy, payload);                                              \
                 }                                                                                  \
             }                                                                                      \
@@ -144,6 +146,7 @@ static bezier random_bezier(int seed_index, int n_init, int columns, int rows, i
                 for (int yy = lower; yy <= upper; yy++)                                            \
                 {                                                                                  \
                     int xx = x0;                                                                   \
+        assert(xx>=0 && xx<image->columns && yy>=0 && yy<image->rows);     /* sign of gradient must not change */           \
                     CALLBACK(image, xx, yy, payload);                                              \
                 }                                                                                  \
             }                                                                                      \
